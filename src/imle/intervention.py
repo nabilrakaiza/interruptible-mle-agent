@@ -1,0 +1,79 @@
+"""Intervention schema and queue. Shared contract: change by PR only.
+
+See docs/intervention-protocol.md.
+"""
+
+from __future__ import annotations
+
+import json
+from enum import Enum
+from pathlib import Path
+from typing import Any, Optional
+
+from pydantic import BaseModel, Field
+
+
+class Action(str, Enum):
+    PRUNE = "prune"
+    REDIRECT = "redirect"
+    OVERRIDE = "override"
+    INJECT = "inject"
+    CORRECT = "correct"
+    REBUDGET = "rebudget"
+    ABANDON = "abandon"
+
+
+ACTION_KIND = {
+    Action.PRUNE: "action",
+    Action.REDIRECT: "action",
+    Action.OVERRIDE: "action",
+    Action.INJECT: "belief",
+    Action.CORRECT: "belief",
+    Action.REBUDGET: "budget",
+    Action.ABANDON: "budget",
+}
+
+
+class Intervention(BaseModel):
+    id: str
+    ts: str
+    source: str                      # "human" or a policy name
+    action: Action
+    target: Optional[str] = None
+    params: dict[str, Any] = Field(default_factory=dict)
+    note: Optional[str] = None
+
+
+class AppliedRecord(BaseModel):
+    intervention: Intervention
+    outcome: str                     # "applied" or "dropped"
+    reason: Optional[str] = None
+    applied_at: str
+
+
+def append(queue_path: Path, item: Intervention) -> None:
+    """Monitors call this. Append-only, one JSON object per line."""
+    queue_path.parent.mkdir(parents=True, exist_ok=True)
+    with queue_path.open("a", encoding="utf-8") as f:
+        f.write(item.model_dump_json() + "\n")
+
+
+def read_all(queue_path: Path) -> list[Intervention]:
+    if not queue_path.exists():
+        return []
+    items = []
+    for line in queue_path.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line:
+            items.append(Intervention.model_validate(json.loads(line)))
+    return sorted(items, key=lambda i: i.ts)
+
+
+def pending(queue_path: Path, applied_path: Path) -> list[Intervention]:
+    """Queue items not yet applied or dropped. Called by the controller at a safe point."""
+    done = set()
+    if applied_path.exists():
+        for line in applied_path.read_text(encoding="utf-8").splitlines():
+            if line.strip():
+                done.add(json.loads(line)["intervention"]["id"])
+    return [i for i in read_all(queue_path) if i.id not in done]

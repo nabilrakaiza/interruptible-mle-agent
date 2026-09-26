@@ -1,0 +1,3 @@
+condition: A1-off
+agents: {evaluation: false}
+monitors: []

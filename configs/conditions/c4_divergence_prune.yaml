@@ -1,0 +1,2 @@
+condition: C4
+monitors: [divergence_prune]
