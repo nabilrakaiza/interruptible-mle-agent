@@ -33,10 +33,10 @@ Names are not assigned yet. The core agent role is on the critical path this wee
 
 | Role | Member | Owns |
 |---|---|---|
-| 1. Infrastructure and experiments | TBD | `scripts/`, `sandbox.py`, `llm_log.py`, `configs/` |
-| 2. Core agent (A3, A5) | TBD | `controller.py`, `agents/coding.py` |
-| 3. Evaluation and memory (A1, A4) | TBD | `agents/evaluation.py`, `agents/reflection.py`, `policies/finding_correction.py` |
-| 4. Interaction layer | TBD | `dashboard/app.py`, `intervention.py`, `checkpoint.py`, `policies/divergence_prune.py` |
+| 1. Infrastructure and experiments | Medhini | `scripts/`, `sandbox.py`, `llm_log.py`, `configs/` |
+| 2. Core agent (A3, A5) | Nabil | `controller.py`, `agents/coding.py` |
+| 3. Evaluation and memory (A1, A4) | Dziand | `agents/evaluation.py`, `agents/reflection.py`, `policies/finding_correction.py` |
+| 4. Interaction layer | Sahi | `dashboard/app.py`, `intervention.py`, `checkpoint.py`, `policies/divergence_prune.py` |
 
 ### 1. Infrastructure and experiments
 
