@@ -1,1 +1,19 @@
 .DS_Store
+
+# local agent instructions
+AGENTS.md
+agents.md
+CLAUDE.md
+claude.md
+
+# secrets, data and run artefacts (see README)
+.env
+data/
+runs/
+
+# python
+__pycache__/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+.venv/
