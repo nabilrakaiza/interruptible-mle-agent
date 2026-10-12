@@ -24,6 +24,8 @@ REPLY = f"PLAN: Predict the training mean.\n\n```python\n{SCRIPT}```\n"
 
 @dataclass
 class Ctx:
+    """Stand-in for the evaluator's TaskContext."""
+
     input_dir: Path
     description: str = "Predict y."
     prediction_format: str = "Columns id,y; one row per row of predict.csv."
@@ -33,6 +35,8 @@ class Ctx:
 
 @dataclass
 class Exec:
+    """Stand-in for the sandbox's ExecResult. Defaults to a clean exit."""
+
     stdout: str = ""
     stderr: str = ""
     exit_code: int = 0
@@ -42,6 +46,8 @@ class Exec:
 
 @dataclass
 class Score:
+    """Stand-in for the evaluator's ScoreResult."""
+
     val_score: float | None = None
     probe_score: float | None = None
     error: str | None = None
@@ -51,9 +57,11 @@ class FakeEvaluator:
     """Scores nodes from a fixed list instead of reading predictions."""
 
     def __init__(self, scores: list[Score]):
+        """`scores` are handed out one per scored node, in order."""
         self.scores = iter(scores)
 
     def prepare(self, task: str, run_dir: Path, seed: int) -> Ctx:
+        """Write a two-row train.csv and predict.csv under the run folder."""
         input_dir = run_dir / "input"
         input_dir.mkdir()
         (input_dir / "train.csv").write_text("id,y\n1,0.0\n2,1.0\n")
@@ -61,6 +69,7 @@ class FakeEvaluator:
         return Ctx(input_dir=input_dir)
 
     def score(self, node_dir: Path) -> Score:
+        """Return the next canned score, writing submission.csv unless it is an error."""
         s = next(self.scores)
         if s.error is None:
             (node_dir / "submission.csv").write_text(f"id,y\n4,{s.val_score}\n")
@@ -68,10 +77,12 @@ class FakeEvaluator:
 
 
 def fake_llm(*, agent: str, system: str, user: str) -> str:
+    """An LLM that always replies with the same valid plan and script."""
     return REPLY
 
 
 def subprocess_run(script_path: Path, cwd: Path, timeout_s: float) -> Exec:
+    """A sandbox that really executes the script, as a plain subprocess."""
     p = subprocess.run(
         [sys.executable, script_path.name], cwd=cwd, capture_output=True, text=True, timeout=timeout_s, check=False
     )
@@ -79,12 +90,14 @@ def subprocess_run(script_path: Path, cwd: Path, timeout_s: float) -> Exec:
 
 
 def make_cfg(**budget) -> dict:
+    """The C1 config, with any `budget` settings overridden."""
     cfg = load_config(REPO / "configs" / "conditions" / "c1_autonomous.yaml")
     cfg["budget"].update(budget)
     return cfg
 
 
 def make_controller(tmp_path: Path, cfg: dict, scores: list[Score], sandbox_run=None, llm=fake_llm) -> Controller:
+    """A controller on fakes. By default every script exits cleanly without running."""
     return Controller(
         cfg,
         "toy-task",
@@ -97,6 +110,7 @@ def make_controller(tmp_path: Path, cfg: dict, scores: list[Score], sandbox_run=
 
 
 def test_load_config_merges_and_expands(monkeypatch):
+    """A condition file overrides base.yaml key by key, and ${LLM_MODEL} is filled in."""
     monkeypatch.setenv("LLM_MODEL", "some-model")
     cfg = load_config(REPO / "configs" / "conditions" / "ablation_a4_off.yaml")
     assert cfg["condition"] == "A4-off"
@@ -106,6 +120,7 @@ def test_load_config_merges_and_expands(monkeypatch):
 
 
 def test_select_next_drafts_until_num_drafts():
+    """Drafts are requested until num_drafts exist, counting buggy ones, then the search ends."""
     cfg = {"search": {"num_drafts": 2}}
     tree = Tree()
     assert select_next(tree, cfg) == (Operator.DRAFT, None)
@@ -140,6 +155,7 @@ def test_run_end_to_end_with_real_script(tmp_path: Path):
 
 
 def test_failures_become_buggy_nodes(tmp_path: Path):
+    """Each failure stage gives a buggy node with its own error category, and the run carries on."""
     results = iter([
         Exec(timed_out=True),
         Exec(exit_code=1, stderr="Traceback ...\nKeyError: 'text'"),
@@ -166,13 +182,16 @@ def test_failures_become_buggy_nodes(tmp_path: Path):
 
 
 def test_stops_on_node_cap(tmp_path: Path):
+    """The search stops at max_nodes even when more drafts are due."""
     c = make_controller(tmp_path, make_cfg(max_nodes=2), [Score(val_score=0.5), Score(val_score=0.6)])
     assert len(c.run().nodes) == 2
     assert checkpoint.read(c.run_dir)["status"]["stop_reason"] == "max_nodes"
 
 
 def test_stops_on_budget_without_submission(tmp_path: Path):
+    """The search stops when the wall clock runs out, and writes no submission if nothing worked."""
     def slow(script_path, cwd, timeout_s):
+        """A sandbox whose script outlasts the whole budget and then fails."""
         time.sleep(0.2)
         return Exec(exit_code=1)
 
@@ -184,6 +203,7 @@ def test_stops_on_budget_without_submission(tmp_path: Path):
 
 
 def test_parse_response():
+    """A reply splits into plan and script; an unclosed code block is rejected."""
     plan, script = coding.parse_response("PLAN: Fit a model.\n\n```python\nprint(1)\n```\ntrailing")
     assert plan == "Fit a model." and script == "print(1)\n"
     with pytest.raises(coding.CodingError):
@@ -191,6 +211,7 @@ def test_parse_response():
 
 
 def test_draft_prompt_shows_data_and_contract(tmp_path: Path):
+    """The draft prompt carries the data preview, the output contract, the metric and the timeout."""
     ctx = FakeEvaluator([]).prepare("toy-task", tmp_path, 0)
     prompt = coding.draft_prompt(ctx, timeout_s=600)
     assert "input/train.csv" in prompt and "id,y" in prompt

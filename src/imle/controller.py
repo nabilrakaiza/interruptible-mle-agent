@@ -37,6 +37,8 @@ ERROR_TAIL_CHARS = 2000
 
 
 class ExecResult(Protocol):
+    """What the sandbox reports for one script execution. Defined by role 1."""
+
     stdout: str
     stderr: str
     exit_code: int
@@ -45,26 +47,51 @@ class ExecResult(Protocol):
 
 
 class SandboxRun(Protocol):
-    def __call__(self, script_path: Path, cwd: Path, timeout_s: float) -> ExecResult: ...
+    """The sandbox entry point, sandbox.run. Implemented by role 1."""
+
+    def __call__(self, script_path: Path, cwd: Path, timeout_s: float) -> ExecResult:
+        """Execute `script_path` with `cwd` as its working directory and kill it after `timeout_s`.
+
+        A timeout or a crash is reported in the result, never raised.
+        """
+        ...
 
 
 class ScoreResult(Protocol):
+    """Scores for one node's predictions. Defined by role 3."""
+
     val_score: float | None
     probe_score: float | None
     error: str | None         # set when predictions are missing or malformed
 
 
 class Evaluator(Protocol):
-    def prepare(self, task: str, run_dir: Path, seed: int) -> TaskContext: ...
+    """A1 as the controller sees it, agents/evaluation.py. Implemented by role 3."""
 
-    def score(self, node_dir: Path) -> ScoreResult: ...
+    def prepare(self, task: str, run_dir: Path, seed: int) -> TaskContext:
+        """Build the train / validation / probe splits for `task`, once per run.
+
+        Returns what A3 needs to write a script: the description, the input folder,
+        the prediction format and the metric.
+        """
+        ...
+
+    def score(self, node_dir: Path) -> ScoreResult:
+        """Score `node_dir/predictions.csv` on validation and probe.
+
+        Also writes the test rows to `node_dir/submission.csv`. Missing or malformed
+        predictions come back as `error`, never as an exception.
+        """
+        ...
 
 
 def _now() -> str:
+    """Current UTC time as an ISO 8601 string."""
     return datetime.now(timezone.utc).isoformat()
 
 
 def _merge(base: dict, override: dict) -> dict:
+    """Deep-merge two dicts. Values in `override` win."""
     out = dict(base)
     for k, v in override.items():
         out[k] = _merge(out[k], v) if isinstance(v, dict) and isinstance(out.get(k), dict) else v
@@ -72,6 +99,7 @@ def _merge(base: dict, override: dict) -> dict:
 
 
 def _expand_env(value: Any) -> Any:
+    """Replace ${VAR} with its environment value in every string of a nested config."""
     if isinstance(value, dict):
         return {k: _expand_env(v) for k, v in value.items()}
     if isinstance(value, list):
@@ -99,6 +127,8 @@ def select_next(tree: Tree, cfg: dict) -> tuple[Operator, str | None] | None:
 
 
 class Controller:
+    """One search run. Owns the tree and everything written under the run folder."""
+
     def __init__(
         self,
         cfg: dict,
@@ -110,6 +140,7 @@ class Controller:
         sandbox_run: SandboxRun,
         evaluator: Evaluator,
     ) -> None:
+        """Store the run settings and the three injected dependencies, and start the budget clock."""
         self.cfg = cfg
         self.task = task
         self.seed = seed
@@ -123,16 +154,19 @@ class Controller:
         self._t0 = time.monotonic()
 
     def elapsed_s(self) -> float:
+        """Seconds since the run started."""
         return time.monotonic() - self._t0
 
     def remaining_s(self) -> float:
+        """Seconds of wall-clock budget left. Negative once the budget is spent."""
         return self.cfg["budget"]["wall_clock_s"] - self.elapsed_s()
 
     def script_timeout_s(self) -> float:
-        """A script never outlives the run budget."""
+        """Timeout for the next script: the configured limit or the remaining budget, whichever is smaller."""
         return max(1.0, min(self.cfg["budget"]["script_timeout_s"], self.remaining_s()))
 
     def stop_reason(self) -> str | None:
+        """Why the search must stop now ("budget" or "max_nodes"), or None to keep going."""
         if self.remaining_s() <= 0:
             return "budget"
         if len(self.tree.nodes) >= self.cfg["budget"]["max_nodes"]:
@@ -140,6 +174,10 @@ class Controller:
         return None
 
     def run(self) -> Tree:
+        """Run the whole search and return the finished tree.
+
+        Prepares the task, adds nodes until a stopping rule fires, then chooses the final submission.
+        """
         self.run_dir.mkdir(parents=True, exist_ok=True)
         (self.run_dir / "config.yaml").write_text(yaml.safe_dump(self.cfg), encoding="utf-8")
 
@@ -159,6 +197,10 @@ class Controller:
         return self.tree
 
     def run_node(self, operator: Operator, parent_id: str | None) -> Node:
+        """Create one node: generate a script, execute it, score it, record the result.
+
+        A failure at any stage gives a buggy node with a categorised error, not an exception.
+        """
         node = Node(id=f"n{len(self.tree.nodes)}", parent_id=parent_id, operator=operator, started_at=_now())
         self.tree.add(node)
         node_dir = self.run_dir / "nodes" / node.id
@@ -195,12 +237,17 @@ class Controller:
         return self._close(node)
 
     def _close(self, node: Node, error: str | None = None) -> Node:
+        """Mark a node finished: working if there is no error, buggy otherwise."""
         node.error = error
         node.status = NodeStatus.WORKING if error is None else NodeStatus.BUGGY
         node.finished_at = _now()
         return node
 
     def safe_point(self, current_node: str | None, **extra: Any) -> None:
+        """Write a checkpoint of the tree, findings and run status.
+
+        Extra keyword arguments are added to status.json.
+        """
         status = {
             "current_node": current_node,
             "elapsed_s": round(self.elapsed_s(), 1),
@@ -216,6 +263,7 @@ class Controller:
         # TODO: drain the queue and apply interventions here (16 to 18 Oct).
 
     def finalize(self, reason: str) -> None:
+        """Choose the final node, copy its submission into the run folder, write the last checkpoint."""
         mode = self.cfg["final_selection"]
         if mode != "best_val":
             raise NotImplementedError(f"final_selection={mode}")
@@ -236,6 +284,7 @@ class Controller:
 
 
 def main() -> None:
+    """Command-line entry point: load the config, wire in the real sandbox, LLM and evaluator, run."""
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", required=True)
     parser.add_argument("--task", required=True)

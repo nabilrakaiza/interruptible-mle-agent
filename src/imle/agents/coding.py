@@ -35,7 +35,14 @@ _CODE_BLOCK = re.compile(r"```(?:python|py)?[ \t]*\n(.*?)```", re.DOTALL)
 
 
 class LLM(Protocol):
-    def __call__(self, *, agent: str, system: str, user: str) -> str: ...
+    """The LLM wrapper, llm_log.complete, with model settings already bound. Implemented by role 1."""
+
+    def __call__(self, *, agent: str, system: str, user: str) -> str:
+        """Send one system and user prompt to the model and return the completion text.
+
+        `agent` names the caller in llm_calls.jsonl. The call is logged by the wrapper.
+        """
+        ...
 
 
 class TaskContext(Protocol):
@@ -75,6 +82,7 @@ def describe_inputs(input_dir: Path, max_entries: int = 30, max_line: int = 300)
 
 
 def draft_prompt(ctx: TaskContext, timeout_s: float) -> str:
+    """The user prompt for a draft: task, data preview, output contract and constraints."""
     direction = "higher" if ctx.higher_is_better else "lower"
     return f"""\
 # Task
@@ -123,6 +131,7 @@ def parse_response(text: str) -> tuple[str, str]:
 
 
 def _generate(llm: LLM, prompt: str, attempts: int = 2) -> tuple[str, str]:
+    """Call the model and parse the reply, asking again if a reply has no script."""
     for _ in range(attempts - 1):
         try:
             return parse_response(llm(agent="coding", system=SYSTEM, user=prompt))

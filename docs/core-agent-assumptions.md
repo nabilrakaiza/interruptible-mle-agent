@@ -11,6 +11,8 @@ def run(script_path: Path, cwd: Path, timeout_s: float) -> ExecResult
 # ExecResult has: stdout: str, stderr: str, exit_code: int, wall_time_s: float, timed_out: bool
 ```
 
+**What it does:** executes one generated script and reports what happened.
+
 - Runs `script_path` with `cwd` as the working directory, and kills it after `timeout_s`. A timeout returns a result with `timed_out=True`; it does not raise.
 - The controller creates the node directory `runs/<run_id>/nodes/<node_id>/`, writes `solution.py` into it, and symlinks `input` to the evaluator's input directory. This works for a subprocess sandbox. A Docker sandbox would mount the input directory at `<cwd>/input` instead, and the controller's symlink line goes away.
 - The Python environment has numpy, pandas, scipy and scikit-learn. The prompt tells the model it may use exactly these (`PACKAGES` in `agents/coding.py`). Tell role 2 when the list is final, for example if lightgbm, xgboost or torch are added.
@@ -20,6 +22,8 @@ def run(script_path: Path, cwd: Path, timeout_s: float) -> ExecResult
 ```python
 def complete(agent: str, system: str, user: str, *, model: str, temperature: float, seed: int, run_dir: Path) -> str
 ```
+
+**What it does:** sends one system and user prompt to the model and returns the reply. `agent` names the caller in the log, for example `"coding"`.
 
 - Returns the completion text and logs the call to `run_dir/llm_calls.jsonl`.
 - Retries on transient API errors happen inside the wrapper. An exception that escapes it ends the run.
@@ -43,6 +47,11 @@ def score(node_dir: Path) -> ScoreResult
 # ScoreResult has: val_score: float | None, probe_score: float | None, error: str | None
 ```
 
+**What they do:**
+
+- `prepare` runs once at the start of a run. It builds the train, validation and probe splits for the task and returns what the coding agent needs to write a script: the task description, the input folder, the prediction format and the metric.
+- `score` runs once per node, after its script has finished. It scores that node's predictions on validation and probe and writes the node's test submission.
+
 The script contract, which is the part that most needs agreement:
 
 - `input_dir` holds `train.csv` (labelled) and `predict.csv` (unlabelled), plus any other files the task needs, such as image folders. The script sees it as `./input`.
@@ -63,7 +72,7 @@ Not covered yet: the leakage screen before execution, and what the script does w
 - `status.json` contains `current_node`, `elapsed_s`, `timestamp`, `task`, `seed`, `condition` and `done`. `current_node` is the node that just finished, or null at step 0 and at the end.
 - The final checkpoint has `done: true` and adds `stop_reason` (`budget`, `max_nodes` or `search_exhausted`), `final_node` and `submitted`.
 - Per-node files are outside the checkpoint, in `runs/<run_id>/nodes/<node_id>/`: `solution.py`, `stdout.txt`, `stderr.txt`, `predictions.csv`, `submission.csv`.
-- Interventions are not applied yet. The controller will call the apply function from `safe_point()`.
+- Interventions are not applied yet. The controller will call the apply function from `safe_point()`. What that function is expected to do: read the pending queue items, apply or drop each one against the current tree and findings, and record the outcome in `applied.jsonl`. Its signature is not assumed yet.
 
 ## Decisions inside role 2
 
