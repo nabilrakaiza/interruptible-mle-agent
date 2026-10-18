@@ -59,15 +59,17 @@ def log_llm_call(run_id, agent, model, prompt, completion, input_tokens, output_
 
 **What it does:** appends one record per LLM call to `runs/<run_id>/llm_calls.jsonl`.
 
-Her branch has the logger but no API client, so role 2 wrote one in `imle/llm.py` (`AnthropicLLM`). It calls `log_llm_call` when that function exists, and writes an identical record itself until the branch is merged.
+Her branch has the logger but no API client, so role 2 wrote one in `imle/llm.py`. It calls `log_llm_call` when that function exists, and writes an identical record itself until the branch is merged.
 
-Assumed, as the provider is not decided:
+The team's choice (18 Oct) is Xiaomi MiMo-V2.6-Flash through OpenRouter:
 
-- **Model:** Claude through the Anthropic SDK (`anthropic` added to `pyproject.toml`). The model comes from `LLM_MODEL` and defaults to `claude-opus-5-5` when that is unset. Credentials come from `ANTHROPIC_API_KEY` in `.env`, or from an `ant auth login` profile.
-- **Effort and temperature:** `llm.effort` (default `high`) sets reasoning depth. `llm.temperature` is not sent, because current Claude models reject sampling parameters.
-- **Refusal fallback:** requests opt into server-side refusal fallback (`fallbacks: "default"`), so a declined request is retried on another model instead of failing. The model that actually answered is the one logged.
-- **Errors and retries:** the SDK retries transient errors 5 times. An error that still escapes ends the run, which can then be resumed with `--resume`.
-- **Cost:** `cost_usd` is filled in for Opus 5.5, Sonnet 5.5 and Haiku 5.5, and left empty for any other model.
+- **Setup:** `llm.provider: openrouter` (the default) uses the OpenAI-compatible API at `https://openrouter.ai/api/v1` (`openai` added to `pyproject.toml`). Set `OPENROUTER_API_KEY` in `.env`.
+- **Model:** from `LLM_MODEL`, defaulting to `xiaomi/mimo-v2.6-flash` when that is unset. OpenRouter lists it at $0.14 per million input tokens and $0.28 per million output tokens, with a 131k output limit.
+- **Sampling:** `llm.temperature` (0.7) and the run seed are sent. `llm.effort` (default `high`) is sent as OpenRouter's reasoning effort. The reasoning text is not logged, only the answer.
+- **Cost:** `cost_usd` uses the cost OpenRouter reports, falling back to the listed price.
+- **Errors and retries:** the SDK retries transient errors 5 times, with a 15-minute timeout per call. An error that still escapes ends the run, which can then be resumed with `--resume`.
+
+`llm.provider: gemini` is for cheap local testing: `GEMINI_API_KEY`, default `gemini-3.5-flash-lite`, through Google's OpenAI-compatible endpoint. `scripts/smoke_run.py` runs the full agent on a toy task built from scikit-learn's bundled breast cancer data, with no Kaggle data, Docker or role 3 evaluator needed. Run `python scripts/smoke_run.py --dry-run` (canned replies, no key) or `--provider gemini`.
 
 ## Role 1: grading and launching
 

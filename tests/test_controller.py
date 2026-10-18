@@ -407,3 +407,18 @@ def test_ablation_switches(tmp_path: Path):
     c.run()
     assert calls == []
     assert all("<model_cards>" not in p for p in llm.prompts)
+
+
+def test_improve_prompt_lists_attempts_that_did_not_help(tmp_path: Path):
+    """Earlier improve attempts on the same node, worse or failed, are shown so the model tries something new."""
+    sandbox = FakeSandbox([Exec(), Exec(), Exec(exit_code=1, stderr="boom")])
+    cfg = make_cfg(budget={"max_nodes": 4}, search={"num_drafts": 1, "debug_prob": 0.0})
+    llm = ScriptedLLM()
+    c = make_controller(tmp_path, cfg, llm=llm, sandbox=sandbox, evaluator=FakeEvaluator([0.5, 0.6]))
+    tree = c.run()
+
+    assert [n.parent_id for n in tree.nodes.values()] == [None, "n0", "n0", "n0"]
+    assert "already tried" not in llm.prompts[1]
+    last = llm.prompts[3]
+    assert "- Attempt 2. -> validation 0.6000, not better" in last
+    assert "- Attempt 3. -> failed (runtime_error)" in last

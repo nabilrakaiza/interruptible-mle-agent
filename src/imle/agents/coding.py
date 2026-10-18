@@ -40,7 +40,7 @@ _FUTURE_IMPORT = re.compile(r"^from __future__ import .*$", re.MULTILINE)
 
 
 class LLM(Protocol):
-    """The LLM wrapper, with model settings already bound. See imle.llm.AnthropicLLM."""
+    """The LLM wrapper, with model settings already bound. See imle.llm.OpenAICompatibleLLM."""
 
     def __call__(self, *, agent: str, system: str, user: str) -> str:
         """Send one system and user prompt to the model and return the completion text.
@@ -229,8 +229,20 @@ def improve_prompt(
     output: str,
     findings: Sequence[dict[str, Any]] = (),
     cards: Sequence[dict[str, Any]] = (),
+    tried: Sequence[tuple[str, str]] = (),
 ) -> str:
-    """The user prompt for an improve: a working script, its score, and a request for one change."""
+    """The user prompt for an improve: a working script, its score, and a request for one change.
+
+    `tried` lists (plan, outcome) for changes already tried on this script, so the model
+    proposes something new instead of repeating them.
+    """
+    already = ""
+    if tried:
+        listed = "\n".join(f"- {plan[:PLAN_CHARS]} -> {outcome}" for plan, outcome in tried)
+        already = (
+            "\n\nThese changes were already tried on this script and did not beat it. Do not repeat "
+            f"them or minor variations of them; try a clearly different change:\n{listed}"
+        )
     return f"""{_context(ctx, timeout_s, findings, cards)}
 
 # Current best script
@@ -251,7 +263,7 @@ Its printed output ends with:
 
 Make one specific change that should improve the validation score, such as a better
 feature, model or setting, and keep everything else the same. Describe the change in
-the plan. Return the whole updated script.
+the plan. Return the whole updated script.{already}
 
 {RESPONSE_FORMAT}"""
 

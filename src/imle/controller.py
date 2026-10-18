@@ -418,8 +418,28 @@ class Controller:
         output = stdout.read_text(encoding="utf-8") if stdout.exists() else ""
         return coding.improve(
             self.llm, self.ctx, timeout_s, script, parent.plan, parent.val_score, output,
-            findings=findings, cards=self.cards(),
+            findings=findings, cards=self.cards(), tried=self.tried_improvements(parent),
         )
+
+    def tried_improvements(self, parent: Node) -> list[tuple[str, str]]:
+        """(plan, outcome) for each finished improve attempt on `parent` that did not beat it.
+
+        Successful attempts are left out: they are already better nodes, and the search
+        moves to them.
+        """
+        tried = []
+        min_gain = self.cfg["search"]["improve_min_rel_gain"]
+        for child in self.tree.children(parent.id):
+            if child.operator != Operator.IMPROVE or child.status == NodeStatus.RUNNING or not child.plan:
+                continue
+            if child.val_score is not None:
+                if beats(self.tree, child.val_score, parent.val_score, min_gain):
+                    continue
+                outcome = f"validation {child.val_score:.4f}, not better"
+            else:
+                outcome = f"failed ({(child.error or 'unknown error').split(':')[0]})"
+            tried.append((child.plan, outcome))
+        return tried
 
     def run_node(self, operator: Operator, parent_id: str | None) -> Node:
         """Create one node: generate a script, screen it, execute it, score it, record the result.
@@ -600,7 +620,7 @@ def main() -> None:
 
     from imle.agents import evaluation, reflection
     from imle.execution import make_sandbox
-    from imle.llm import AnthropicLLM
+    from imle.llm import make_llm
 
     for name in ("prepare", "score"):
         if not hasattr(evaluation, name):
@@ -612,15 +632,8 @@ def main() -> None:
     if reflect is None and (cfg.get("agents") or {}).get("reflection", True):
         print("warning: imle.agents.reflection.reflect is not implemented yet; running without findings")
 
-    llm_cfg = cfg.get("llm") or {}
     deps = {
-        "llm": AnthropicLLM(
-            llm_cfg.get("model"),
-            run_dir,
-            effort=llm_cfg.get("effort", "high"),
-            max_tokens=int(llm_cfg.get("max_tokens", 64000)),
-            seed=seed,
-        ),
+        "llm": make_llm(cfg, run_dir, seed),
         "sandbox": make_sandbox(cfg, args.sandbox),
         "evaluator": evaluation,
         "reflect": reflect,
