@@ -13,10 +13,16 @@ search:
 splits:
   probe_fraction: 0.1
 final_selection: best_val    # best_val | top_k | override
+top_k: 3                     # submissions kept when final_selection is top_k
 agents:
   evaluation: true
   retrieval: true
   reflection: true
 llm:
-  model: ${LLM_MODEL}
-  temperature: 0.7
+  model: ${LLM_MODEL}        # unset or empty: claude-opus-5-5
+  temperature: 0.7           # not sent: current Claude models reject sampling parameters
+  effort: high               # low | medium | high | xhigh | max
+  max_tokens: 64000
+sandbox:
+  backend: docker            # docker | subprocess (no isolation, local testing only)
+  image: imle-sandbox:latest # needs Python plus the packages in agents/coding.py

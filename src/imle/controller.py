@@ -9,31 +9,31 @@ Responsibilities:
 
 The controller is the ONLY writer to the tree.
 
-Implemented so far: draft-only search, budget and node-cap stopping,
-checkpointing, best-val final selection. The sandbox, LLM and evaluator are
-passed in; the signatures assumed here are in docs/core-agent-assumptions.md.
+The sandbox, LLM, evaluator and reflection agent are passed in. The signatures
+assumed for the parts owned by other roles are in docs/core-agent-assumptions.md.
 """
 
 from __future__ import annotations
 
 import argparse
 import os
+import random
 import shutil
 import time
 from datetime import datetime, timezone
-from functools import partial
 from pathlib import Path
 from typing import Any, Protocol
 
 import yaml
 from dotenv import load_dotenv
+from pydantic import BaseModel
 
 from imle import checkpoint
-from imle.agents import coding
+from imle.agents import coding, retrieval
 from imle.agents.coding import LLM, CodingError, TaskContext
+from imle.apply import apply_pending
+from imle.state import SearchState
 from imle.tree import Node, NodeStatus, Operator, Tree
-
-ERROR_TAIL_CHARS = 2000
 
 
 class ExecResult(Protocol):
@@ -46,13 +46,17 @@ class ExecResult(Protocol):
     timed_out: bool
 
 
-class SandboxRun(Protocol):
-    """The sandbox entry point, sandbox.run. Implemented by role 1."""
+class Sandbox(Protocol):
+    """A sandbox backend. See imle.execution."""
 
-    def __call__(self, script_path: Path, cwd: Path, timeout_s: float) -> ExecResult:
-        """Execute `script_path` with `cwd` as its working directory and kill it after `timeout_s`.
+    def output_path(self, output_dir: Path) -> str:
+        """The path the script must write to for its output to land in `output_dir`."""
+        ...
 
-        A timeout or a crash is reported in the result, never raised.
+    def run(self, script_path: Path, workspace: Path, output_dir: Path, timeout_s: float) -> ExecResult:
+        """Execute `script_path` with `workspace` as its read-only working directory.
+
+        Kills it after `timeout_s`. A timeout or a crash is reported in the result, never raised.
         """
         ...
 
@@ -77,12 +81,31 @@ class Evaluator(Protocol):
         ...
 
     def score(self, node_dir: Path) -> ScoreResult:
-        """Score `node_dir/predictions.csv` on validation and probe.
+        """Score `node_dir/output/predictions.csv` on validation and probe.
 
         Also writes the test rows to `node_dir/submission.csv`. Missing or malformed
-        predictions come back as `error`, never as an exception.
+        predictions come back as `error`, never as an exception. Must also work in a
+        new process after a crash, from what `prepare` saved under the run folder.
         """
         ...
+
+
+class Reflect(Protocol):
+    """A4, agents/reflection.py `reflect`. Implemented by role 3. Optional."""
+
+    def __call__(self, llm: LLM, tree: Tree, findings: list[dict], run_dir: Path) -> list[dict]:
+        """Return the findings after the latest node: unchanged, or updated if a phase closed."""
+        ...
+
+
+class SavedContext(BaseModel):
+    """The task context as saved to task_context.json, so a resumed run does not rebuild the splits."""
+
+    description: str
+    input_dir: Path
+    prediction_format: str
+    metric: str
+    higher_is_better: bool
 
 
 def _now() -> str:
@@ -115,15 +138,114 @@ def load_config(condition_path: Path) -> dict:
     return _expand_env(_merge(base, condition))
 
 
-def select_next(tree: Tree, cfg: dict) -> tuple[Operator, str | None] | None:
-    """The next (operator, parent id), or None when the search has nothing left to try.
+def _link_tree(src: Path, dst: Path) -> None:
+    """Copy a folder by hard-linking its files, falling back to real copies across filesystems."""
 
-    A pure function of the tree, so a prune or a resume needs no extra bookkeeping.
+    def link_or_copy(s: str, d: str) -> None:
+        """Hard-link one file, or copy it if linking is not possible."""
+        try:
+            os.link(s, d)
+        except OSError:
+            shutil.copy2(s, d)
+
+    shutil.copytree(src, dst, copy_function=link_or_copy)
+
+
+def debug_depth(tree: Tree, node: Node) -> int:
+    """How many debug attempts in a row led to this node (0 for a draft or improve)."""
+    depth = 0
+    while node.operator == Operator.DEBUG:
+        depth += 1
+        node = tree.nodes[node.parent_id]
+    return depth
+
+
+def beats(tree: Tree, new: float, old: float, min_rel_gain: float) -> bool:
+    """Whether `new` improves on `old` by at least `min_rel_gain`, relative to |old|."""
+    gain = (new - old) if tree.higher_is_better else (old - new)
+    return gain >= min_rel_gain * max(abs(old), 1e-12)
+
+
+def improve_exhausted(tree: Tree, node: Node, search: dict) -> bool:
+    """Whether `node` has had `improve_patience` improve attempts that failed to beat it."""
+    failed = 0
+    for child in tree.children(node.id):
+        if child.operator != Operator.IMPROVE:
+            continue
+        if child.val_score is None or not beats(tree, child.val_score, node.val_score, search["improve_min_rel_gain"]):
+            failed += 1
+    return failed >= search["improve_patience"]
+
+
+def debuggable(tree: Tree, search: dict) -> list[Node]:
+    """Buggy leaves that have a script and have not reached `max_debug_depth`."""
+    return [
+        n
+        for n in tree.nodes.values()
+        if n.status == NodeStatus.BUGGY
+        and n.script_path
+        and not tree.children(n.id)
+        and debug_depth(tree, n) < search["max_debug_depth"]
+    ]
+
+
+def ranked(tree: Tree) -> list[Node]:
+    """Working nodes with a validation score, best first."""
+    nodes = [n for n in tree.selectable() if n.val_score is not None]
+    return sorted(nodes, key=lambda n: n.val_score, reverse=tree.higher_is_better)
+
+
+def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator, str | None]:
+    """The next (operator, parent id), following the AIDE-style greedy policy.
+
+    1. Draft until `num_drafts` drafts exist.
+    2. With probability `debug_prob`, debug a random buggy leaf below `max_debug_depth`.
+    3. Otherwise improve the best working node that is not exhausted.
+    4. With nothing to improve, debug if possible, else draft again.
+
+    A pure function of the tree and the random state, so a prune or a resume needs
+    no extra bookkeeping.
     """
+    if search.get("policy", "greedy") != "greedy":
+        raise ValueError(f"unknown search policy {search['policy']!r}")
     drafts = sum(1 for n in tree.nodes.values() if n.operator == Operator.DRAFT)
-    if drafts < cfg["search"]["num_drafts"]:
+    if drafts < search["num_drafts"]:
         return Operator.DRAFT, None
+
+    to_debug = debuggable(tree, search)
+    if to_debug and rng.random() < search["debug_prob"]:
+        return Operator.DEBUG, rng.choice(to_debug).id
+
+    for node in ranked(tree):
+        if not improve_exhausted(tree, node, search):
+            return Operator.IMPROVE, node.id
+
+    if to_debug:
+        return Operator.DEBUG, rng.choice(to_debug).id
+    return Operator.DRAFT, None
+
+
+def latest_complete_checkpoint(run_dir: Path) -> dict | None:
+    """The newest checkpoint that was fully written, skipping one cut short by a crash."""
+    step = checkpoint.latest_step(run_dir)
+    while step is not None and step >= 0:
+        ck = checkpoint.read(run_dir, step)
+        if ck is not None:
+            return ck
+        step -= 1
     return None
+
+
+def _rng_state_to_json(state: tuple) -> list:
+    """random.Random state as JSON-friendly lists."""
+    version, internal, gauss = state
+    return [version, list(internal), gauss]
+
+
+def _rng_state_from_json(state: list) -> tuple:
+    """random.Random state back from its JSON form."""
+    version, internal, gauss = state
+    return version, tuple(internal), gauss
 
 
 class Controller:
@@ -137,29 +259,71 @@ class Controller:
         run_dir: Path,
         *,
         llm: LLM,
-        sandbox_run: SandboxRun,
+        sandbox: Sandbox,
         evaluator: Evaluator,
+        reflect: Reflect | None = None,
     ) -> None:
-        """Store the run settings and the three injected dependencies, and start the budget clock."""
+        """Store the run settings and dependencies, and start the budget clock."""
         self.cfg = cfg
         self.task = task
         self.seed = seed
-        self.run_dir = run_dir
+        self.run_dir = Path(run_dir)
         self.llm = llm
-        self.sandbox_run = sandbox_run
+        self.sandbox = sandbox
         self.evaluator = evaluator
+        self.reflect = reflect
         self.tree = Tree()
-        self.findings: list = []
-        self.step = 0
+        self.findings: list[dict] = []
+        self.state = SearchState()
+        self.rng = random.Random(seed)
+        self.ctx: SavedContext | None = None
+        self.done = False
+        self._elapsed_before = 0.0
         self._t0 = time.monotonic()
 
+    @classmethod
+    def resume(cls, run_dir: Path, **deps: Any) -> Controller:
+        """Rebuild a controller from the latest complete checkpoint of `run_dir`.
+
+        `deps` are the same keyword arguments as the constructor (llm, sandbox, evaluator,
+        reflect). Time between the crash and the resume is not charged to the budget.
+        """
+        run_dir = Path(run_dir)
+        ck = latest_complete_checkpoint(run_dir)
+        if ck is None:
+            raise ValueError(f"{run_dir} has no complete checkpoint to resume from")
+        status = ck["status"]
+        cfg = yaml.safe_load((run_dir / "config.yaml").read_text(encoding="utf-8"))
+        c = cls(cfg, status["task"], status["seed"], run_dir, **deps)
+        c.tree = Tree.model_validate(ck["tree"])
+        c.findings = ck["findings"]
+        c.state = SearchState.model_validate(status["search"])
+        c.state.step = ck["step"] + 1
+        if c.state.rng_state is not None:
+            c.rng.setstate(_rng_state_from_json(c.state.rng_state))
+        c.ctx = SavedContext.model_validate_json((run_dir / "task_context.json").read_text(encoding="utf-8"))
+        c.done = bool(status.get("done"))
+        c._elapsed_before = c.state.elapsed_s
+        c._set_aside_unfinished_nodes()
+        c._set_aside_incomplete_checkpoints(ck["step"])
+        return c
+
+    @property
+    def workspace(self) -> Path:
+        """The sandbox's working directory: every node's script plus the input data."""
+        return self.run_dir / "workspace"
+
+    def node_dir(self, node_id: str) -> Path:
+        """Where one node's script, logs, output and submission live."""
+        return self.run_dir / "nodes" / node_id
+
     def elapsed_s(self) -> float:
-        """Seconds since the run started."""
-        return time.monotonic() - self._t0
+        """Seconds of budget used, including time before a resume."""
+        return self._elapsed_before + time.monotonic() - self._t0
 
     def remaining_s(self) -> float:
-        """Seconds of wall-clock budget left. Negative once the budget is spent."""
-        return self.cfg["budget"]["wall_clock_s"] - self.elapsed_s()
+        """Seconds of wall-clock budget left, after rebudgets. Negative once it is spent."""
+        return self.cfg["budget"]["wall_clock_s"] + self.state.extra_budget_s - self.elapsed_s()
 
     def script_timeout_s(self) -> float:
         """Timeout for the next script: the configured limit or the remaining budget, whichever is smaller."""
@@ -173,61 +337,126 @@ class Controller:
             return "max_nodes"
         return None
 
+    def agent_on(self, name: str) -> bool:
+        """Whether an optional agent (evaluation, retrieval, reflection) is enabled in the config."""
+        return bool((self.cfg.get("agents") or {}).get(name, True))
+
     def run(self) -> Tree:
         """Run the whole search and return the finished tree.
 
-        Prepares the task, adds nodes until a stopping rule fires, then chooses the final submission.
+        Prepares the task (unless resuming), adds nodes until a stopping rule fires, then
+        chooses the final submission. A run that already finished is returned unchanged.
         """
-        self.run_dir.mkdir(parents=True, exist_ok=True)
-        (self.run_dir / "config.yaml").write_text(yaml.safe_dump(self.cfg), encoding="utf-8")
-
-        self.ctx = self.evaluator.prepare(self.task, self.run_dir, self.seed)
-        self.tree.higher_is_better = self.ctx.higher_is_better
-        self.safe_point(current_node=None)
+        if self.done:
+            return self.tree
+        if self.ctx is None:
+            self.prepare()
+            self.safe_point(current_node=None)
 
         while (reason := self.stop_reason()) is None:
-            choice = select_next(self.tree, self.cfg)
-            if choice is None:
-                reason = "search_exhausted"
-                break
-            node = self.run_node(*choice)
+            operator, parent_id = self.select()
+            node = self.run_node(operator, parent_id)
+            if self.reflect is not None and self.agent_on("reflection"):
+                self.findings = self.reflect(self.llm, self.tree, self.findings, self.run_dir)
             self.safe_point(current_node=node.id)
 
         self.finalize(reason)
         return self.tree
 
+    def prepare(self) -> None:
+        """Save the config, let A1 build the splits, and set up the shared workspace."""
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        (self.run_dir / "config.yaml").write_text(yaml.safe_dump(self.cfg), encoding="utf-8")
+        ctx = self.evaluator.prepare(self.task, self.run_dir, self.seed)
+
+        self.workspace.mkdir(exist_ok=True)
+        if Path(ctx.input_dir).resolve() != (self.workspace / "input").resolve():
+            _link_tree(Path(ctx.input_dir), self.workspace / "input")
+        self.ctx = SavedContext(
+            description=ctx.description,
+            input_dir=self.workspace / "input",
+            prediction_format=ctx.prediction_format,
+            metric=ctx.metric,
+            higher_is_better=ctx.higher_is_better,
+        )
+        (self.run_dir / "task_context.json").write_text(self.ctx.model_dump_json(indent=2), encoding="utf-8")
+        self.tree.higher_is_better = ctx.higher_is_better
+
+    def select(self) -> tuple[Operator, str | None]:
+        """The next (operator, parent id): a pending redirect if there is one, else the search policy."""
+        forced, self.state.forced_next = self.state.forced_next, None
+        if forced is not None:
+            return Operator(forced["operator"]), forced["parent_id"]
+        return select_next(self.tree, self.cfg["search"], self.rng)
+
+    def cards(self) -> list[dict]:
+        """Model cards for the prompt: the task's hand-written cards plus any injected by monitors."""
+        base = retrieval.cards_for(self.task) if self.agent_on("retrieval") else []
+        return base + self.state.injected_cards
+
+    def generate(self, operator: Operator, parent: Node | None) -> tuple[str, str]:
+        """Ask A3 for a plan and script for this operator. Raises CodingError on an unusable reply."""
+        timeout_s = self.script_timeout_s()
+        findings = self.findings if self.agent_on("reflection") else []
+        if operator == Operator.DRAFT:
+            previous = [n.plan for n in self.tree.nodes.values() if n.operator == Operator.DRAFT and n.plan]
+            return coding.draft(
+                self.llm, self.ctx, timeout_s, findings=findings, cards=self.cards(), previous_plans=previous
+            )
+
+        parent_dir = self.node_dir(parent.id)
+        script = (self.run_dir / parent.script_path).read_text(encoding="utf-8")
+        if operator == Operator.DEBUG:
+            stderr_path = parent_dir / "stderr.txt"
+            stderr = stderr_path.read_text(encoding="utf-8") if stderr_path.exists() else ""
+            error = parent.error or "unknown error"
+            if stderr.strip() and "runtime_error" not in error:  # a runtime error already carries its stderr
+                error += "\n\nEnd of stderr:\n" + coding.tail(stderr)
+            return coding.debug(self.llm, self.ctx, timeout_s, script, error, findings=findings)
+
+        stdout = parent_dir / "stdout.txt"
+        output = stdout.read_text(encoding="utf-8") if stdout.exists() else ""
+        return coding.improve(
+            self.llm, self.ctx, timeout_s, script, parent.plan, parent.val_score, output,
+            findings=findings, cards=self.cards(),
+        )
+
     def run_node(self, operator: Operator, parent_id: str | None) -> Node:
-        """Create one node: generate a script, execute it, score it, record the result.
+        """Create one node: generate a script, screen it, execute it, score it, record the result.
 
         A failure at any stage gives a buggy node with a categorised error, not an exception.
         """
         node = Node(id=f"n{len(self.tree.nodes)}", parent_id=parent_id, operator=operator, started_at=_now())
         self.tree.add(node)
-        node_dir = self.run_dir / "nodes" / node.id
-        node_dir.mkdir(parents=True)
+        node_dir = self.node_dir(node.id)
+        output_dir = node_dir / "output"
+        output_dir.mkdir(parents=True)
+        parent = self.tree.nodes[parent_id] if parent_id else None
 
         try:
-            node.plan, script = coding.draft(self.llm, self.ctx, self.script_timeout_s())
+            node.plan, script = self.generate(operator, parent)
         except CodingError as e:
             return self._close(node, error=f"generation_error: {e}")
+        (node_dir / "solution.py").write_text(script, encoding="utf-8")
+        node.script_path = str(Path("nodes") / node.id / "solution.py")
 
-        script_path = node_dir / "solution.py"
-        script_path.write_text(script, encoding="utf-8")
-        node.script_path = str(script_path)
-        # Relative, so the link survives the run folder being moved to shared storage.
-        target = os.path.relpath(Path(self.ctx.input_dir).resolve(), node_dir.resolve())
-        (node_dir / "input").symlink_to(target, target_is_directory=True)
+        screen = getattr(self.evaluator, "screen", None)
+        if screen is not None and self.agent_on("evaluation"):
+            problem = screen(self.llm, script)
+            if problem:
+                return self._close(node, error=f"leakage: {problem}")
 
+        exec_path = self.workspace / f"{node.id}.py"
+        exec_path.write_text(coding.with_output_dir(script, self.sandbox.output_path(output_dir)), encoding="utf-8")
         # Recomputed: generating the script used some of the budget.
         timeout_s = self.script_timeout_s()
-        result = self.sandbox_run(script_path, node_dir, timeout_s)
+        result = self.sandbox.run(exec_path, self.workspace, output_dir, timeout_s)
         (node_dir / "stdout.txt").write_text(result.stdout, encoding="utf-8")
         (node_dir / "stderr.txt").write_text(result.stderr, encoding="utf-8")
         if result.timed_out:
             return self._close(node, error=f"timeout: killed after {timeout_s:.0f}s")
         if result.exit_code != 0:
-            tail = result.stderr[-ERROR_TAIL_CHARS:].strip()
-            return self._close(node, error=f"runtime_error: exit code {result.exit_code}\n{tail}")
+            return self._close(node, error=f"runtime_error: exit code {result.exit_code}\n{coding.tail(result.stderr)}")
 
         score = self.evaluator.score(node_dir)
         if score.error is not None or score.val_score is None:
@@ -243,80 +472,164 @@ class Controller:
         node.finished_at = _now()
         return node
 
-    def safe_point(self, current_node: str | None, **extra: Any) -> None:
-        """Write a checkpoint of the tree, findings and run status.
+    def _set_aside_unfinished_nodes(self) -> None:
+        """Move folders of nodes that never reached a checkpoint to nodes/_unfinished, before reuse of their IDs."""
+        nodes_root = self.run_dir / "nodes"
+        if not nodes_root.exists():
+            return
+        for d in nodes_root.iterdir():
+            if d.is_dir() and d.name.startswith("n") and d.name not in self.tree.nodes:
+                target = nodes_root / "_unfinished" / f"{d.name}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+                target.parent.mkdir(exist_ok=True)
+                d.rename(target)
 
-        Extra keyword arguments are added to status.json.
+    def _set_aside_incomplete_checkpoints(self, last_complete: int) -> None:
+        """Rename checkpoint folders newer than `last_complete`, so monitors see the resumed run's checkpoints.
+
+        A checkpoint cut short by a crash would otherwise stay the highest step, and
+        checkpoint.read would keep returning nothing.
         """
+        root = self.run_dir / "checkpoints"
+        for d in root.iterdir():
+            if d.is_dir() and d.name.isdigit() and int(d.name) > last_complete:
+                d.rename(root / f"_incomplete_{d.name}")
+
+    def write_checkpoint(self, current_node: str | None, **extra: Any) -> None:
+        """Write a checkpoint of the tree, findings and run status. `extra` is added to status.json."""
+        self.state.elapsed_s = round(self.elapsed_s(), 1)
+        self.state.rng_state = _rng_state_to_json(self.rng.getstate())
         status = {
             "current_node": current_node,
-            "elapsed_s": round(self.elapsed_s(), 1),
+            "elapsed_s": self.state.elapsed_s,
+            "remaining_s": round(self.remaining_s(), 1),
             "timestamp": _now(),
             "task": self.task,
             "seed": self.seed,
             "condition": self.cfg.get("condition"),
             "done": False,
             **extra,
+            "search": self.state.model_dump(mode="json"),
         }
-        checkpoint.write(self.run_dir, self.step, self.tree.model_dump(mode="json"), self.findings, status)
-        self.step += 1
-        # TODO: drain the queue and apply interventions here (16 to 18 Oct).
+        checkpoint.write(self.run_dir, self.state.step, self.tree.model_dump(mode="json"), self.findings, status)
+        self.state.step += 1
+
+    def safe_point(self, current_node: str | None) -> None:
+        """Checkpoint, then apply queued interventions, then checkpoint again if any was applied."""
+        self.write_checkpoint(current_node)
+        records = apply_pending(self.run_dir, self.tree, self.findings, self.state)
+        if any(r.outcome == "applied" for r in records):
+            self.write_checkpoint(current_node)
+
+    def choose_final(self) -> tuple[list[Node], str]:
+        """The node(s) to submit, and how they were chosen.
+
+        An applied override wins in every mode. Otherwise `final_selection` decides:
+        best_val (and override with no override applied) takes the best node by validation
+        score; top_k takes the best `top_k` (default 3).
+        """
+        best = ranked(self.tree)
+        note = ""
+        if self.state.override_node:
+            node = self.tree.nodes.get(self.state.override_node)
+            if node is not None and node.status == NodeStatus.WORKING:
+                return [node], "override"
+            note = "; override target no longer working"
+        mode = self.cfg["final_selection"]
+        if mode == "top_k":
+            return best[: int(self.cfg.get("top_k", 3))], "top_k" + note
+        if mode in ("best_val", "override"):
+            return best[:1], "best_val" + note
+        raise ValueError(f"unknown final_selection {mode!r}")
 
     def finalize(self, reason: str) -> None:
-        """Choose the final node, copy its submission into the run folder, write the last checkpoint."""
-        mode = self.cfg["final_selection"]
-        if mode != "best_val":
-            raise NotImplementedError(f"final_selection={mode}")
-        best = self.tree.best_by_val()
-        submitted = False
-        if best is not None:
-            src = self.run_dir / "nodes" / best.id / "submission.csv"
-            if src.exists():
+        """Apply late interventions, copy the chosen submission(s) into the run folder, write the last checkpoint.
+
+        The first chosen node goes to submission.csv; with top_k every chosen node also goes
+        to final/submission_<rank>.csv.
+        """
+        apply_pending(self.run_dir, self.tree, self.findings, self.state)
+        chosen, how = self.choose_final()
+        submitted = []
+        for rank, node in enumerate(chosen, start=1):
+            src = self.node_dir(node.id) / "submission.csv"
+            if not src.exists():
+                continue
+            if not submitted:
                 shutil.copyfile(src, self.run_dir / "submission.csv")
-                submitted = True
-        self.safe_point(
+            if len(chosen) > 1:
+                (self.run_dir / "final").mkdir(exist_ok=True)
+                shutil.copyfile(src, self.run_dir / "final" / f"submission_{rank}.csv")
+            submitted.append(node.id)
+        self.done = True
+        self.write_checkpoint(
             current_node=None,
             done=True,
             stop_reason=reason,
-            final_node=best.id if best else None,
-            submitted=submitted,
+            final_selection=how,
+            final_node=chosen[0].id if chosen else None,
+            final_nodes=[n.id for n in chosen],
+            submitted=bool(submitted),
         )
 
 
 def main() -> None:
-    """Command-line entry point: load the config, wire in the real sandbox, LLM and evaluator, run."""
+    """Command-line entry point: start a new run, or resume one, with the real sandbox, LLM and evaluator."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("--config", required=True)
-    parser.add_argument("--task", required=True)
+    parser.add_argument("--config", help="condition file, for example configs/conditions/c1_autonomous.yaml")
+    parser.add_argument("--task", help="MLE-bench competition ID")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--run-dir", help="default: runs/<condition>_<task>_seed<seed>_<utc time>")
+    parser.add_argument("--resume", metavar="RUN_DIR", help="continue a run from its latest checkpoint")
+    parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override sandbox.backend")
     args = parser.parse_args()
-
     load_dotenv()
-    cfg = load_config(Path(args.config))
-    stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    default_name = f"{cfg.get('condition', 'run')}_{args.task}_seed{args.seed}_{stamp}"
-    run_dir = Path(args.run_dir) if args.run_dir else Path("runs") / default_name
 
-    from imle import llm_log, sandbox
-    from imle.agents import evaluation
+    if args.resume:
+        run_dir = Path(args.resume)
+        cfg = yaml.safe_load((run_dir / "config.yaml").read_text(encoding="utf-8"))
+        status = (latest_complete_checkpoint(run_dir) or {}).get("status", {})
+        seed = status.get("seed", args.seed)
+    else:
+        if not (args.config and args.task):
+            parser.error("--config and --task are required unless --resume is given")
+        cfg = load_config(Path(args.config))
+        seed = args.seed
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        default_name = f"{cfg.get('condition', 'run')}_{args.task}_seed{seed}_{stamp}"
+        run_dir = Path(args.run_dir) if args.run_dir else Path("runs") / default_name
 
-    for module, names in ((sandbox, ["run"]), (llm_log, ["complete"]), (evaluation, ["prepare", "score"])):
-        for name in names:
-            if not hasattr(module, name):
-                raise SystemExit(
-                    f"{module.__name__}.{name} is not implemented yet. "
-                    "Expected signature: docs/core-agent-assumptions.md"
-                )
+    from imle.agents import evaluation, reflection
+    from imle.execution import make_sandbox
+    from imle.llm import AnthropicLLM
 
-    llm = partial(
-        llm_log.complete,
-        model=cfg["llm"]["model"],
-        temperature=cfg["llm"]["temperature"],
-        seed=args.seed,
-        run_dir=run_dir,
-    )
-    Controller(cfg, args.task, args.seed, run_dir, llm=llm, sandbox_run=sandbox.run, evaluator=evaluation).run()
+    for name in ("prepare", "score"):
+        if not hasattr(evaluation, name):
+            raise SystemExit(
+                f"imle.agents.evaluation.{name} is not implemented yet. "
+                "Expected signature: docs/core-agent-assumptions.md"
+            )
+    reflect = getattr(reflection, "reflect", None)
+    if reflect is None and (cfg.get("agents") or {}).get("reflection", True):
+        print("warning: imle.agents.reflection.reflect is not implemented yet; running without findings")
+
+    llm_cfg = cfg.get("llm") or {}
+    deps = {
+        "llm": AnthropicLLM(
+            llm_cfg.get("model"),
+            run_dir,
+            effort=llm_cfg.get("effort", "high"),
+            max_tokens=int(llm_cfg.get("max_tokens", 64000)),
+            seed=seed,
+        ),
+        "sandbox": make_sandbox(cfg, args.sandbox),
+        "evaluator": evaluation,
+        "reflect": reflect,
+    }
+    if args.resume:
+        controller = Controller.resume(run_dir, **deps)
+    else:
+        controller = Controller(cfg, args.task, seed, run_dir, **deps)
+    controller.run()
     print(f"run finished: {run_dir}")
 
 
