@@ -18,8 +18,10 @@ from __future__ import annotations
 import argparse
 import json
 import os
+import platform
 import random
 import shutil
+import socket
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -267,6 +269,32 @@ def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator,
     return Operator.DRAFT, None
 
 
+def machine_info() -> dict:
+    """Where this process runs: Colab, Kaggle or local, with CPU count, memory and Python version.
+
+    Saved with every run so that results can be compared on the same kind of machine:
+    a 4-hour budget buys less search on a slower one.
+    """
+    if "COLAB_RELEASE_TAG" in os.environ or "COLAB_GPU" in os.environ:
+        where = "colab"
+    elif "KAGGLE_KERNEL_RUN_TYPE" in os.environ:
+        where = "kaggle"
+    else:
+        where = "local"
+    try:
+        memory_gb = round(os.sysconf("SC_PAGE_SIZE") * os.sysconf("SC_PHYS_PAGES") / 1e9, 1)
+    except (ValueError, OSError, AttributeError):  # not available on every platform
+        memory_gb = None
+    return {
+        "platform": where,
+        "hostname": socket.gethostname(),
+        "cpus": os.cpu_count(),
+        "memory_gb": memory_gb,
+        "system": f"{platform.system()} {platform.release()} {platform.machine()}",
+        "python": platform.python_version(),
+    }
+
+
 def latest_complete_checkpoint(run_dir: Path) -> dict | None:
     """The newest checkpoint that was fully written, skipping one cut short by a crash."""
     step = checkpoint.latest_step(run_dir)
@@ -401,6 +429,7 @@ class Controller:
         """
         if self.done:
             return self.tree
+        self.record_machine("resume" if self.ctx is not None else "start")
         if self.ctx is None:
             self.prepare()
             self.safe_point(current_node=None)
@@ -427,6 +456,13 @@ class Controller:
 
         self.finalize(reason)
         return self.tree
+
+    def record_machine(self, event: str) -> None:
+        """Append where this start or resume runs to machine.jsonl (a resume may land on another machine)."""
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        record = {"timestamp": _now(), "event": event, "step": self.state.step, **machine_info()}
+        with (self.run_dir / "machine.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
 
     def outage(self, error: LLMUnavailable, failures: int, started: float) -> None:
         """Handle a failed LLM call during a node: discard the node, then wait or stop.
@@ -741,6 +777,8 @@ def main() -> None:
     parser.add_argument("--run-dir", help="default: runs/<condition>_<task>_seed<seed>_<utc time>")
     parser.add_argument("--resume", metavar="RUN_DIR", help="continue a run from its latest checkpoint")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override sandbox.backend")
+    parser.add_argument("--provider", choices=["openrouter", "gemini"],
+                        help="override llm.provider for a new run; a resumed run keeps the provider it started with")
     args = parser.parse_args()
     load_dotenv()
 
@@ -753,6 +791,8 @@ def main() -> None:
         if not (args.config and args.task):
             parser.error("--config and --task are required unless --resume is given")
         cfg = load_config(Path(args.config))
+        if args.provider:
+            cfg.setdefault("llm", {})["provider"] = args.provider
         seed = args.seed
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         default_name = f"{cfg.get('condition', 'run')}_{args.task}_seed{seed}_{stamp}"

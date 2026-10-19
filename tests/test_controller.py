@@ -14,6 +14,7 @@ from imle.controller import (
     improve_failures,
     latest_complete_checkpoint,
     load_config,
+    machine_info,
     select_next,
 )
 from imle.execution import SubprocessSandbox
@@ -548,3 +549,22 @@ def test_improve_prompt_lists_approaches_from_other_branches(tmp_path: Path):
     assert "Other branches of this run" in llm.prompts[2]
     assert "- Attempt 1. -> validation 0.5000" in llm.prompts[2]
     assert "- Attempt 2. ->" not in llm.prompts[2]  # the script being improved is not "another branch"
+
+
+def test_machine_is_recorded_on_start_and_resume(tmp_path: Path, monkeypatch):
+    """Each start and resume appends where it ran, so runs can be compared on the same kind of machine."""
+    monkeypatch.delenv("COLAB_RELEASE_TAG", raising=False)
+    monkeypatch.delenv("COLAB_GPU", raising=False)
+    monkeypatch.setenv("KAGGLE_KERNEL_RUN_TYPE", "Batch")
+    assert machine_info()["platform"] == "kaggle" and machine_info()["cpus"] >= 1
+
+    c = make_controller(tmp_path, make_cfg(budget={"max_nodes": 1}))
+    c.run()
+    cfg = make_cfg(budget={"max_nodes": 2})
+    (c.run_dir / "config.yaml").write_text(__import__("yaml").safe_dump(cfg))
+    resumed = Controller.resume(c.run_dir, llm=ScriptedLLM(), sandbox=FakeSandbox(), evaluator=FakeEvaluator())
+    resumed.done = False
+    resumed.run()
+    records = [json.loads(line) for line in (c.run_dir / "machine.jsonl").read_text().splitlines()]
+    assert [r["event"] for r in records] == ["start", "resume"]
+    assert records[0]["platform"] == "kaggle" and records[1]["step"] > 0

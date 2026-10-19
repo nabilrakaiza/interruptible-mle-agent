@@ -22,6 +22,7 @@ runs/<run_id>/
   queue.jsonl, applied.jsonl, llm_calls.jsonl
   model_cards.json         A2's cards and audit trail (web retrieval only)
   llm_errors.jsonl         LLM API failures: when, the error, and how long the run waited
+  machine.jsonl            where each start and resume ran: platform, CPUs, memory, Python
   submission.csv           the final submission (final/submission_<rank>.csv too for top_k)
 ```
 
@@ -181,6 +182,10 @@ Stated here because they affect how runs are read.
   - A2 does not fall back to the hand-written cards during an outage; it runs again on the next draft. A failed A4 call leaves the findings unchanged until the next node.
 - **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
 - **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
+
+## Running on Colab or Kaggle
+
+See [`cloud-runs.md`](cloud-runs.md). `scripts/cloud_run.py` starts or resumes a run, keeps a copy on Drive (or restores from an earlier Kaggle output), and retries after errors. `notebooks/colab_run.ipynb` and `notebooks/kaggle_run.ipynb` wrap it. The controller takes `--provider openrouter|gemini` to override `llm.provider` for a new run.
 
 ## Analysis: error taxonomy (role 2's report section)
 

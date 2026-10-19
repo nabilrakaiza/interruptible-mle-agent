@@ -169,6 +169,7 @@ def main() -> None:
     parser.add_argument("--retrieval", choices=["static", "web"], default="static",
                         help="model cards: hand-written (default) or written by A2 from allowlisted docs")
     parser.add_argument("--resume", metavar="RUN_DIR", help="continue a smoke run from its latest checkpoint")
+    parser.add_argument("--run-dir", type=Path, help="default: runs/smoke_<provider>_seed<seed>_<utc time>")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
 
@@ -179,7 +180,9 @@ def main() -> None:
         # A web run has its cards in model_cards.json, which the controller reuses; a static run has none.
         web = (run_dir / "model_cards.json").exists()
         retrieve = WebRetriever(ROOT / "data" / "retrieval_cache") if web else None
-        controller = Controller.resume(run_dir, llm=make_llm(cfg, run_dir, seed), sandbox=SubprocessSandbox(),
+        dry = cfg["llm"].get("provider") == "dry"
+        llm = CannedLLM() if dry else make_llm(cfg, run_dir, seed)
+        controller = Controller.resume(run_dir, llm=llm, sandbox=SubprocessSandbox(),
                                        evaluator=ToyEvaluator(), retrieve=retrieve)
         summarise(run_dir, controller.run())
         return
@@ -187,12 +190,13 @@ def main() -> None:
     cfg = load_config(ROOT / "configs" / "conditions" / "c1_autonomous.yaml")
     cfg["budget"].update({"wall_clock_s": args.minutes * 60, "max_nodes": args.nodes, "script_timeout_s": 120})
     cfg["search"]["num_drafts"] = 2
-    cfg["llm"].update({"provider": args.provider, "model": args.model or "", "effort": args.effort})
+    cfg["llm"].update({"provider": "dry" if args.dry_run else args.provider, "model": args.model or "",
+                       "effort": args.effort})
     cfg["sandbox"] = {"backend": "subprocess"}
 
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
     name = "dry" if args.dry_run else args.provider
-    run_dir = ROOT / "runs" / f"smoke_{name}_seed{args.seed}_{stamp}"
+    run_dir = args.run_dir.resolve() if args.run_dir else ROOT / "runs" / f"smoke_{name}_seed{args.seed}_{stamp}"
     llm = CannedLLM() if args.dry_run else make_llm(cfg, run_dir, args.seed)
 
     retrieve = WebRetriever(ROOT / "data" / "retrieval_cache") if args.retrieval == "web" else None
