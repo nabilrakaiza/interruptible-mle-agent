@@ -7,6 +7,7 @@ in runs/ like any other, so the dashboard shows it.
     pip install -e ".[sandbox]"
     python scripts/smoke_run.py --provider gemini              # real LLM, a few cents at most
     python scripts/smoke_run.py --dry-run                      # canned replies, no API key needed
+    python scripts/smoke_run.py --provider gemini --retrieval web   # A2 reads the allowlisted docs
 
 This is a development tool only. The real evaluator for the project tasks is role 3's.
 """
@@ -23,6 +24,7 @@ import numpy as np
 import pandas as pd
 from dotenv import load_dotenv
 
+from imle.agents.retrieval import WebRetriever
 from imle.controller import Controller, load_config
 from imle.execution import SubprocessSandbox
 from imle.llm import make_llm
@@ -162,6 +164,8 @@ def main() -> None:
     parser.add_argument("--nodes", type=int, default=6)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--dry-run", action="store_true", help="canned replies instead of an LLM")
+    parser.add_argument("--retrieval", choices=["static", "web"], default="static",
+                        help="model cards: hand-written (default) or written by A2 from allowlisted docs")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
 
@@ -176,9 +180,17 @@ def main() -> None:
     run_dir = ROOT / "runs" / f"smoke_{name}_seed{args.seed}_{stamp}"
     llm = CannedLLM() if args.dry_run else make_llm(cfg, run_dir, args.seed)
 
+    retrieve = WebRetriever(ROOT / "data" / "retrieval_cache") if args.retrieval == "web" else None
     controller = Controller(cfg, TASK, args.seed, run_dir, llm=llm, sandbox=SubprocessSandbox(),
-                            evaluator=ToyEvaluator())
+                            evaluator=ToyEvaluator(), retrieve=retrieve)
     summarise(run_dir, controller.run())
+    cards = run_dir / "model_cards.json"
+    if cards.exists():
+        report = json.loads(cards.read_text())
+        print(f"A2: {len(report['cards'])} cards from {len(report['pages'])} pages, "
+              f"{len(report['dropped'])} dropped, fallback={report['fallback']}")
+        for c in report["cards"]:
+            print(f"  - [{c['modality']}] {c['name']}")
 
 
 if __name__ == "__main__":

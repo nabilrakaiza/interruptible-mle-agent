@@ -9,13 +9,14 @@ Responsibilities:
 
 The controller is the ONLY writer to the tree.
 
-The sandbox, LLM, evaluator and reflection agent are passed in. The signatures
+The sandbox, LLM, evaluator, retrieval and reflection agents are passed in. The signatures
 assumed for the parts owned by other roles are in docs/core-agent-assumptions.md.
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import random
 import shutil
@@ -87,6 +88,14 @@ class Evaluator(Protocol):
         predictions come back as `error`, never as an exception. Must also work in a
         new process after a crash, from what `prepare` saved under the run folder.
         """
+        ...
+
+
+class Retrieve(Protocol):
+    """A2, agents/retrieval.py `WebRetriever`. Optional; without it the hand-written cards are used."""
+
+    def __call__(self, llm: LLM, task: str, ctx: TaskContext, run_dir: Path) -> list[dict]:
+        """Return the model cards for the run, and save them with an audit report to run_dir/model_cards.json."""
         ...
 
 
@@ -262,6 +271,7 @@ class Controller:
         sandbox: Sandbox,
         evaluator: Evaluator,
         reflect: Reflect | None = None,
+        retrieve: Retrieve | None = None,
     ) -> None:
         """Store the run settings and dependencies, and start the budget clock."""
         self.cfg = cfg
@@ -272,6 +282,8 @@ class Controller:
         self.sandbox = sandbox
         self.evaluator = evaluator
         self.reflect = reflect
+        self.retrieve = retrieve
+        self._cards: list[dict] | None = None
         self.tree = Tree()
         self.findings: list[dict] = []
         self.state = SearchState()
@@ -286,7 +298,7 @@ class Controller:
         """Rebuild a controller from the latest complete checkpoint of `run_dir`.
 
         `deps` are the same keyword arguments as the constructor (llm, sandbox, evaluator,
-        reflect). Time between the crash and the resume is not charged to the budget.
+        reflect, retrieve). Time between the crash and the resume is not charged to the budget.
         """
         run_dir = Path(run_dir)
         ck = latest_complete_checkpoint(run_dir)
@@ -390,9 +402,25 @@ class Controller:
         return select_next(self.tree, self.cfg["search"], self.rng)
 
     def cards(self) -> list[dict]:
-        """Model cards for the prompt: the task's hand-written cards plus any injected by monitors."""
-        base = retrieval.cards_for(self.task) if self.agent_on("retrieval") else []
+        """Model cards for the prompt: A2's cards (unless A2 is off) plus any injected by monitors."""
+        base = self.retrieved_cards() if self.agent_on("retrieval") else []
         return base + self.state.injected_cards
+
+    def retrieved_cards(self) -> list[dict]:
+        """A2's cards for this run, made once on first use (the first draft) and then reused.
+
+        Web cards are saved in model_cards.json, so a resumed run gets the same cards
+        without retrieving again. Without a retriever, the hand-written cards are used.
+        """
+        if self._cards is None:
+            saved = self.run_dir / "model_cards.json"
+            if saved.exists():
+                self._cards = json.loads(saved.read_text(encoding="utf-8"))["cards"]
+            elif self.retrieve is None:
+                self._cards = retrieval.cards_for(self.task)
+            else:
+                self._cards = self.retrieve(self.llm, self.task, self.ctx, self.run_dir)
+        return self._cards
 
     def generate(self, operator: Operator, parent: Node | None) -> tuple[str, str]:
         """Ask A3 for a plan and script for this operator. Raises CodingError on an unusable reply."""
@@ -632,11 +660,18 @@ def main() -> None:
     if reflect is None and (cfg.get("agents") or {}).get("reflection", True):
         print("warning: imle.agents.reflection.reflect is not implemented yet; running without findings")
 
+    rcfg = cfg.get("retrieval") or {}
+    retrieve = None
+    if rcfg.get("source", "static") == "web":
+        retrieve = retrieval.WebRetriever(Path(rcfg.get("cache_dir", "data/retrieval_cache")),
+                                          max_cards=rcfg.get("max_cards", 8))
+
     deps = {
         "llm": make_llm(cfg, run_dir, seed),
         "sandbox": make_sandbox(cfg, args.sandbox),
         "evaluator": evaluation,
         "reflect": reflect,
+        "retrieve": retrieve,
     }
     if args.resume:
         controller = Controller.resume(run_dir, **deps)

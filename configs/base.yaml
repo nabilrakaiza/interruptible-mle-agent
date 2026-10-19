@@ -18,6 +18,10 @@ agents:
   evaluation: true
   retrieval: true
   reflection: true
+retrieval:                   # A2, used when agents.retrieval is true
+  source: web                # web: cards written from allowlisted docs | static: hand-written cards only
+  cache_dir: data/retrieval_cache  # fetched pages, shared by runs so every run reads the same text
+  max_cards: 8
 llm:
   provider: openrouter       # openrouter (experiments) | gemini (local testing)
   model: ${LLM_MODEL}        # unset or empty: the provider's default, see imle/llm.py

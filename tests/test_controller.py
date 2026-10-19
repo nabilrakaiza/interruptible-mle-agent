@@ -422,3 +422,35 @@ def test_improve_prompt_lists_attempts_that_did_not_help(tmp_path: Path):
     last = llm.prompts[3]
     assert "- Attempt 2. -> validation 0.6000, not better" in last
     assert "- Attempt 3. -> failed (runtime_error)" in last
+
+
+def test_retrieval_runs_once_and_survives_resume(tmp_path: Path):
+    """A2 is called on the first draft only; its cards reach every draft, and a resume reuses the saved cards."""
+    calls = []
+
+    def retrieve(llm, task, ctx, run_dir):
+        """Record the call and save one card, as WebRetriever would."""
+        calls.append(task)
+        cards = [{"name": "Web card", "modality": "text", "use_when": "w", "recipe": "r", "watch_out": "o",
+                  "source": "https://scikit-learn.org/stable/"}]
+        (run_dir / "model_cards.json").write_text(json.dumps({"cards": cards}))
+        return cards
+
+    llm = ScriptedLLM()
+    c = make_controller(tmp_path, make_cfg(budget={"max_nodes": 3}), llm=llm, retrieve=retrieve)
+    c.run()
+    assert calls == ["toy-task"]
+    assert "Web card" in llm.prompts[0] and "Web card" in llm.prompts[1]
+
+    def never(*args):
+        """Fails the test if retrieval runs again."""
+        raise AssertionError("retrieval ran again after resume")
+
+    cfg = make_cfg(budget={"max_nodes": 4})
+    (tmp_path / "run" / "config.yaml").write_text(__import__("yaml").safe_dump(cfg))
+    llm2 = ScriptedLLM()
+    resumed = Controller.resume(tmp_path / "run", llm=llm2, sandbox=FakeSandbox(), evaluator=FakeEvaluator(),
+                                retrieve=never)
+    resumed.done = False
+    resumed.run()
+    assert "Web card" in llm2.prompts[0]
