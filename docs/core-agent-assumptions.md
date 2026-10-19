@@ -162,6 +162,7 @@ Stated here because they affect how runs are read.
   - Then, with probability `debug_prob`, debug a random buggy leaf. A chain of debug attempts stops at `max_debug_depth`.
   - Otherwise improve the best working node.
   - A node stops being improved once `improve_patience` of its improve children have failed to beat it by `improve_min_rel_gain`, relative to its score. A buggy improve child counts as a failure.
+  - The count is per improve chain, not per node. An improve that does not beat its parent by the threshold (worse, buggy, or better by only a little) stays in its parent's chain, and every node in a chain shares its count. A run of tiny gains (0.12738, 0.12736, ...) therefore ends after `improve_patience` steps, and the whole chain is then skipped. An improve that beats its parent by the threshold starts a new chain. Before this, each such node was the new best and started at zero. A 200-node test run spent 198 nodes micro-tuning blend weights on one lineage this way.
   - With nothing to improve, debug if possible, else draft again. The search therefore ends only on budget or node cap.
 - **Final selection:** `best_val` takes the best working node by validation score. `top_k` takes the best `top_k` (default 3) and also writes `final/submission_<rank>.csv`. An applied `override` wins in every mode.
 - **Error categories:** `Node.error` starts with `generation_error`, `leakage`, `timeout`, `runtime_error` or `invalid_submission`. `generation_error` means the model returned no code block twice in a row; the others map onto the taxonomy in `experiments.md`.
@@ -180,6 +181,26 @@ Stated here because they affect how runs are read.
   - A2 does not fall back to the hand-written cards during an outage; it runs again on the next draft. A failed A4 call leaves the findings unchanged until the next node.
 - **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
 - **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
+
+## Analysis: error taxonomy (role 2's report section)
+
+`scripts/error_taxonomy.py` classifies every node of every run from the saved run folders only, so the tables regenerate at any time:
+
+```
+python scripts/error_taxonomy.py                      # all runs under runs/
+python scripts/error_taxonomy.py runs/c1_* --out analysis/taxonomy
+```
+
+- **Category per node:** working, generation_error, leakage, timeout, runtime_error (with a subtype from the last exception in stderr: import_error, missing_key_or_column, shape_mismatch, out_of_memory, ...), invalid_submission, pruned or abandoned.
+- **Labels on working nodes:**
+  - `validation_overfitting`: beat its parent on validation but did worse on test (once role 1 grades nodes) or else probe.
+  - `no_gain`: an improve that did not beat its parent.
+  - `no_change`: an improve with the same predictions as its parent.
+  - `unused_data`: an input file the script never names (a text heuristic).
+- **Per run:** the longest stretch without a new best, nodes spent after the final best, debug chains fixed and attempts needed, and selection regret (how much worse the final pick is on test or probe than the best node).
+- **Output:** `nodes.csv` (one row per node, reusable by the other analyses), `runs.csv`, and `summary.md`.
+
+Needs from other roles: `Node.test_score` filled by role 1's grading. Until then probe stands in, which is noisier.
 
 ## Red-team: prompt injection through A2 (19 Oct, Gemini 3.5 Flash Lite, one seed, 3 drafts per mode)
 

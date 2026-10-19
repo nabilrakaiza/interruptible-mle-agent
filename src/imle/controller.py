@@ -175,15 +175,38 @@ def beats(tree: Tree, new: float, old: float, min_rel_gain: float) -> bool:
     return gain >= min_rel_gain * max(abs(old), 1e-12)
 
 
+def improve_failures(tree: Tree, search: dict) -> dict[str, int]:
+    """For each node, the failed improve attempts on its improve chain.
+
+    An improve that does not beat its parent by improve_min_rel_gain (worse, buggy, or
+    better by only a little) is a failed attempt and stays in its parent's chain. An
+    improve that does beat it starts a new chain. Every node in a chain shares the chain's
+    count, so once it reaches improve_patience the whole chain is exhausted.
+
+    Before, the count was per node, so a run of tiny gains (0.12738, 0.12736, ...) never
+    ran out of patience: each new node was the best by raw score and started at zero. This
+    follows the proposal (Section 3.6): an improve chain ends after a fixed number of
+    attempts below the relative threshold.
+    """
+    gain = search["improve_min_rel_gain"]
+    chain: dict[str, str] = {}  # node id -> id of the node that started its chain
+    failed: dict[str, int] = {}
+    for n in tree.nodes.values():  # creation order: a parent always comes before its children
+        parent = tree.nodes.get(n.parent_id) if n.parent_id else None
+        stays = (n.operator == Operator.IMPROVE and parent is not None and parent.val_score is not None
+                 and (n.val_score is None or not beats(tree, n.val_score, parent.val_score, gain)))
+        if stays:
+            chain[n.id] = chain[parent.id]
+            failed[chain[n.id]] += 1
+        else:
+            chain[n.id] = n.id
+            failed[n.id] = 0
+    return {node_id: failed[start] for node_id, start in chain.items()}
+
+
 def improve_exhausted(tree: Tree, node: Node, search: dict) -> bool:
-    """Whether `node` has had `improve_patience` improve attempts that failed to beat it."""
-    failed = 0
-    for child in tree.children(node.id):
-        if child.operator != Operator.IMPROVE:
-            continue
-        if child.val_score is None or not beats(tree, child.val_score, node.val_score, search["improve_min_rel_gain"]):
-            failed += 1
-    return failed >= search["improve_patience"]
+    """Whether `node`'s improve chain has had `improve_patience` attempts that failed to beat it."""
+    return improve_failures(tree, search)[node.id] >= search["improve_patience"]
 
 
 def debuggable(tree: Tree, search: dict) -> list[Node]:
@@ -209,7 +232,7 @@ def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator,
 
     1. Draft until `num_drafts` drafts exist.
     2. With probability `debug_prob`, debug a random buggy leaf below `max_debug_depth`.
-    3. Otherwise improve the best working node that is not exhausted.
+    3. Otherwise improve the best working node that is not exhausted (see improve_failures).
     4. With nothing to improve, debug if possible, else draft again.
 
     A pure function of the tree and the random state, so a prune or a resume needs
@@ -225,8 +248,9 @@ def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator,
     if to_debug and rng.random() < search["debug_prob"]:
         return Operator.DEBUG, rng.choice(to_debug).id
 
+    failures = improve_failures(tree, search)
     for node in ranked(tree):
-        if not improve_exhausted(tree, node, search):
+        if failures[node.id] < search["improve_patience"]:
             return Operator.IMPROVE, node.id
 
     if to_debug:

@@ -8,6 +8,7 @@ in runs/ like any other, so the dashboard shows it.
     python scripts/smoke_run.py --provider gemini              # real LLM, a few cents at most
     python scripts/smoke_run.py --dry-run                      # canned replies, no API key needed
     python scripts/smoke_run.py --provider gemini --retrieval web   # A2 reads the allowlisted docs
+    python scripts/smoke_run.py --resume runs/smoke_gemini_seed0_...    # continue after a crash
 
 This is a development tool only. The real evaluator for the project tasks is role 3's.
 """
@@ -22,10 +23,11 @@ from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
+import yaml
 from dotenv import load_dotenv
 
 from imle.agents.retrieval import WebRetriever
-from imle.controller import Controller, load_config
+from imle.controller import Controller, latest_complete_checkpoint, load_config
 from imle.execution import SubprocessSandbox
 from imle.llm import make_llm
 
@@ -166,8 +168,21 @@ def main() -> None:
     parser.add_argument("--dry-run", action="store_true", help="canned replies instead of an LLM")
     parser.add_argument("--retrieval", choices=["static", "web"], default="static",
                         help="model cards: hand-written (default) or written by A2 from allowlisted docs")
+    parser.add_argument("--resume", metavar="RUN_DIR", help="continue a smoke run from its latest checkpoint")
     args = parser.parse_args()
     load_dotenv(ROOT / ".env")
+
+    if args.resume:
+        run_dir = Path(args.resume).resolve()
+        cfg = yaml.safe_load((run_dir / "config.yaml").read_text())
+        seed = latest_complete_checkpoint(run_dir)["status"]["seed"]
+        # A web run has its cards in model_cards.json, which the controller reuses; a static run has none.
+        web = (run_dir / "model_cards.json").exists()
+        retrieve = WebRetriever(ROOT / "data" / "retrieval_cache") if web else None
+        controller = Controller.resume(run_dir, llm=make_llm(cfg, run_dir, seed), sandbox=SubprocessSandbox(),
+                                       evaluator=ToyEvaluator(), retrieve=retrieve)
+        summarise(run_dir, controller.run())
+        return
 
     cfg = load_config(ROOT / "configs" / "conditions" / "c1_autonomous.yaml")
     cfg["budget"].update({"wall_clock_s": args.minutes * 60, "max_nodes": args.nodes, "script_timeout_s": 120})

@@ -11,6 +11,7 @@ from imle.agents.coding import LLMUnavailable
 from imle.controller import (
     Controller,
     beats,
+    improve_failures,
     latest_complete_checkpoint,
     load_config,
     select_next,
@@ -192,18 +193,34 @@ def test_select_drafts_first_then_improves_best():
 
 
 def test_select_skips_exhausted_nodes():
-    """After improve_patience failed improvements a node is skipped; with none left, draft."""
+    """After improve_patience failed improvements a chain is skipped, its failed children too; with none left, draft."""
     tree = Tree(higher_is_better=True)
     tree.add(Node(id="n0", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.5))
     tree.add(Node(id="n1", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.8))
     tree.add(Node(id="n2", parent_id="n1", operator=Operator.IMPROVE, status=NodeStatus.WORKING, val_score=0.7))
     assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.IMPROVE, "n1")  # one failed attempt so far
     tree.add(Node(id="n3", parent_id="n1", operator=Operator.IMPROVE, status=NodeStatus.BUGGY))
-    assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.IMPROVE, "n2")  # n1 is exhausted
-    tree.nodes["n2"].status = NodeStatus.PRUNED
+    # n1 is exhausted, and so is n2: it is one of n1's failed attempts, not a fresh start
     assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.IMPROVE, "n0")
     tree.nodes["n0"].status = NodeStatus.PRUNED
-    assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.DRAFT, None)  # only exhausted n1 is left
+    assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.DRAFT, None)  # only exhausted nodes are left
+
+
+def test_a_chain_of_tiny_gains_runs_out_of_patience():
+    """Gains below improve_min_rel_gain share one patience count along the chain; a real gain starts afresh."""
+    search = {**SEARCH, "improve_patience": 3, "improve_min_rel_gain": 0.01}
+    tree = Tree(higher_is_better=False)
+    tree.add(Node(id="n0", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.6))
+    tree.add(Node(id="n1", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.5))
+    for i, val in enumerate([0.4999, 0.4998, 0.4997], start=2):  # each beats its parent by about 0.02%
+        tree.add(Node(id=f"n{i}", parent_id=f"n{i - 1}" if i > 2 else "n1", operator=Operator.IMPROVE,
+                      status=NodeStatus.WORKING, val_score=val))
+    assert improve_failures(tree, search) == {"n0": 0, "n1": 3, "n2": 3, "n3": 3, "n4": 3}  # one shared chain
+    assert select_next(tree, search, FixedRandom(0.9)) == (Operator.IMPROVE, "n0")  # the chain from n1 is spent
+
+    tree.add(Node(id="n5", parent_id="n4", operator=Operator.IMPROVE, status=NodeStatus.WORKING, val_score=0.45))
+    assert improve_failures(tree, search)["n5"] == 0  # a 10% gain is a fresh start
+    assert select_next(tree, search, FixedRandom(0.9)) == (Operator.IMPROVE, "n5")
 
 
 def test_beats_uses_a_relative_threshold():
