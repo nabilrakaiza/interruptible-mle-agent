@@ -20,6 +20,7 @@ PACKAGES = "numpy, pandas, scipy, scikit-learn, pillow"
 
 TAIL_CHARS = 2000
 PLAN_CHARS = 300
+OTHER_PLAN_CHARS = 200  # plans from other branches are shown shorter, there can be more of them
 
 SYSTEM = (
     "You are an expert machine learning engineer working on a Kaggle-style competition. "
@@ -62,6 +63,14 @@ class TaskContext(Protocol):
 
 class CodingError(Exception):
     """The model did not return a usable script."""
+
+
+class LLMUnavailable(Exception):
+    """The LLM API failed after the client's own retries: outage, rate limit, no credit.
+
+    Not the agent's fault, so the controller records no node for it. It waits and tries
+    again, and stops the run in a resumable state if the failures continue.
+    """
 
 
 def describe_inputs(input_dir: Path, max_entries: int = 30, max_line: int = 300) -> str:
@@ -230,11 +239,14 @@ def improve_prompt(
     findings: Sequence[dict[str, Any]] = (),
     cards: Sequence[dict[str, Any]] = (),
     tried: Sequence[tuple[str, str]] = (),
+    elsewhere: Sequence[tuple[str, str]] = (),
 ) -> str:
     """The user prompt for an improve: a working script, its score, and a request for one change.
 
     `tried` lists (plan, outcome) for changes already tried on this script, so the model
-    proposes something new instead of repeating them.
+    proposes something new instead of repeating them. `elsewhere` lists (plan, outcome)
+    for approaches on other branches of the tree, so that switching to one of them is not
+    mistaken for a new idea.
     """
     already = ""
     if tried:
@@ -242,6 +254,12 @@ def improve_prompt(
         already = (
             "\n\nThese changes were already tried on this script and did not beat it. Do not repeat "
             f"them or minor variations of them; try a clearly different change:\n{listed}"
+        )
+    if elsewhere:
+        listed = "\n".join(f"- {plan[:OTHER_PLAN_CHARS]} -> {outcome}" for plan, outcome in elsewhere)
+        already += (
+            "\n\nOther branches of this run already used these approaches, with the validation scores "
+            "shown. Switching to one of them is not a new idea:\n" + listed
         )
     return f"""{_context(ctx, timeout_s, findings, cards)}
 

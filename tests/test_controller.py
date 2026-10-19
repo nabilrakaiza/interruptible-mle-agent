@@ -7,6 +7,7 @@ from pathlib import Path
 import pytest
 
 from imle import checkpoint
+from imle.agents.coding import LLMUnavailable
 from imle.controller import (
     Controller,
     beats,
@@ -454,3 +455,79 @@ def test_retrieval_runs_once_and_survives_resume(tmp_path: Path):
     resumed.done = False
     resumed.run()
     assert "Web card" in llm2.prompts[0]
+
+
+class FlakyLLM(ScriptedLLM):
+    """A ScriptedLLM whose API is down for the calls numbered in `down` (1-based), or for every call."""
+
+    def __init__(self, down: set[int] | None = None, always: bool = False):
+        """`down`: which calls fail; `always`: every call fails."""
+        super().__init__()
+        self.down, self.always, self.calls = down or set(), always, 0
+
+    def __call__(self, *, agent: str, system: str, user: str) -> str:
+        """Fail like an unreachable API, or reply as ScriptedLLM does."""
+        self.calls += 1
+        if self.always or self.calls in self.down:
+            raise LLMUnavailable("APIConnectionError: Connection error.")
+        return super().__call__(agent=agent, system=system, user=user)
+
+
+def test_llm_outage_waits_and_records_no_node(tmp_path: Path):
+    """Failed LLM calls leave no node behind; the controller waits longer each time and then carries on."""
+    llm = FlakyLLM(down={2, 3})
+    c = make_controller(tmp_path, make_cfg(budget={"max_nodes": 3}), llm=llm)
+    waits = []
+    c._sleep = waits.append
+    tree = c.run()
+
+    assert list(tree.nodes) == ["n0", "n1", "n2"] and statuses(tree) == ["working"] * 3
+    assert waits == [30, 60]
+    errors = [json.loads(line) for line in (c.run_dir / "llm_errors.jsonl").read_text().splitlines()]
+    assert [e["failures_in_a_row"] for e in errors] == [1, 2] and errors[0]["during"] == "node"
+    assert len(list((c.run_dir / "nodes" / "_unfinished").iterdir())) == 2
+
+
+def test_llm_outage_stops_resumably(tmp_path: Path):
+    """After `outage_retries` failures in a row the run stops unfinished, and --resume completes it."""
+    cfg = make_cfg(budget={"max_nodes": 3})
+    cfg["llm"].update({"outage_retries": 2, "outage_wait_s": 1})
+    first = make_controller(tmp_path, cfg, llm=FlakyLLM(down={2, 3}))
+    first._sleep = lambda s: None
+    with pytest.raises(LLMUnavailable):
+        first.run()
+    status = latest_complete_checkpoint(first.run_dir)["status"]
+    assert status["stop_reason"] == "llm_unavailable" and status["done"] is False
+    assert list(latest_complete_checkpoint(first.run_dir)["tree"]["nodes"]) == ["n0"]
+
+    resumed = Controller.resume(first.run_dir, llm=ScriptedLLM(), sandbox=FakeSandbox(), evaluator=FakeEvaluator())
+    assert list(resumed.run().nodes) == ["n0", "n1", "n2"]
+    assert latest_complete_checkpoint(first.run_dir)["status"]["done"] is True
+
+
+def test_redirect_survives_an_outage(tmp_path: Path):
+    """A redirect pending when the LLM fails is still applied on the next attempt."""
+    c = make_controller(tmp_path, make_cfg(budget={"max_nodes": 2}, search={"num_drafts": 1}), llm=FlakyLLM(down={2}))
+    c._sleep = lambda s: None
+
+    def redirect_once(llm, tree, findings, run_dir):
+        """After the first node, queue a redirect to a new draft, as an applied intervention would."""
+        if len(tree.nodes) == 1:
+            c.state.forced_next = {"operator": "draft", "parent_id": None}
+        return findings
+
+    c.reflect = redirect_once
+    tree = c.run()
+    assert [n.operator.value for n in tree.nodes.values()] == ["draft", "draft"]  # not an improve of n0
+
+
+def test_improve_prompt_lists_approaches_from_other_branches(tmp_path: Path):
+    """Improving the best draft shows the other draft's approach, so switching to it is not mistaken for new."""
+    llm = ScriptedLLM()
+    cfg = make_cfg(budget={"max_nodes": 3}, search={"num_drafts": 2, "debug_prob": 0.0})
+    c = make_controller(tmp_path, cfg, llm=llm, evaluator=FakeEvaluator([0.5, 0.4]))
+    tree = c.run()
+    assert tree.nodes["n2"].parent_id == "n1"
+    assert "Other branches of this run" in llm.prompts[2]
+    assert "- Attempt 1. -> validation 0.5000" in llm.prompts[2]
+    assert "- Attempt 2. ->" not in llm.prompts[2]  # the script being improved is not "another branch"

@@ -28,6 +28,8 @@ llm:
   temperature: 0.7
   effort: high               # reasoning depth: low | medium | high
   max_tokens: 64000
+  outage_retries: 5          # failed LLM calls in a row before the run stops (resumable with --resume)
+  outage_wait_s: 30          # wait after a failed call, doubling each time, at most 5 minutes
 sandbox:
   backend: docker            # docker | subprocess (no isolation, local testing only)
   image: imle-sandbox:latest # needs Python plus the packages in agents/coding.py

@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from imle.agents import retrieval
+from imle.agents.coding import LLMUnavailable
 from imle.agents.retrieval import (
     SOURCES,
     RetrievalError,
@@ -12,6 +13,7 @@ from imle.agents.retrieval import (
     about_competition,
     allowed,
     blocked,
+    clean_text,
     fetch_page,
     html_to_text,
     parse_cards,
@@ -274,3 +276,23 @@ def test_unknown_task_searches_every_modality(tmp_path: Path):
     cards = WebRetriever(fetch=fake_pages())(llm, "some-new-task", Ctx(), tmp_path)
     assert cards[0]["modality"] == "tabular"
     assert json.loads((tmp_path / "model_cards.json").read_text())["pages"] == list(SOURCES)
+
+
+def test_clean_text_drops_formulas_and_doctests():
+    """MathJax formulas, doctest sessions and gallery notes are removed; prose is kept."""
+    text = ("The loss \\(2({y}\\log y)\\) is convex.\n\n>>> X = np.asarray([1, 2])\n\n"
+            "\\[a + b\\]\n\nNote Go to the end to download the full example code.\n\nKeep this.")
+    assert clean_text(text) == "The loss is convex.\n\nKeep this."
+    assert passages(">>> import numpy\n\nGo to the end to download the full example code.\n\nReal text.") == [
+        "Real text."]
+
+
+def test_llm_outage_is_not_a_fallback(tmp_path: Path):
+    """During an LLM outage A2 raises instead of falling back, and saves nothing, so it runs again later."""
+    def down(**kwargs):
+        """An LLM whose API is unreachable."""
+        raise LLMUnavailable("APIConnectionError: down")
+
+    with pytest.raises(LLMUnavailable):
+        WebRetriever(fetch=fake_pages())(down, "spooky-author-identification", Ctx(), tmp_path)
+    assert not (tmp_path / "model_cards.json").exists()

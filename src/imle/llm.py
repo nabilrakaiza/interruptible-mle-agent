@@ -21,6 +21,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from openai import APIError
+
+from imle.agents.coding import LLMUnavailable
+
 try:
     from imle.llm_log import log_llm_call
 except ImportError:  # role 1's logger not merged yet
@@ -154,12 +158,20 @@ class OpenAICompatibleLLM:
         """Send one prompt, log the call, and return the text of the reply.
 
         Reasoning text is not returned or logged, only the answer. A truncated or empty
-        reply is returned as is; the caller sees it as a reply with no script.
+        reply is returned as is; the caller sees it as a reply with no script. Raises
+        LLMUnavailable when the API fails after the client's retries, or answers without
+        any choice (OpenRouter does this for some upstream errors).
         """
         args = self.request_args(system, user)
+        client = self.client()  # a missing key is a setup error, raised as is
         start = time.monotonic()
-        response = self.client().chat.completions.create(**args)
+        try:
+            response = client.chat.completions.create(**args)
+        except APIError as e:
+            raise LLMUnavailable(f"{type(e).__name__}: {e}") from e
         latency_s = time.monotonic() - start
+        if not response.choices:
+            raise LLMUnavailable(f"response without choices: {getattr(response, 'error', None) or 'no detail'}")
 
         choice = response.choices[0]
         text = choice.message.content or ""

@@ -21,6 +21,7 @@ runs/<run_id>/
   checkpoints/<step>/      tree.json, findings.json, status.json
   queue.jsonl, applied.jsonl, llm_calls.jsonl
   model_cards.json         A2's cards and audit trail (web retrieval only)
+  llm_errors.jsonl         LLM API failures: when, the error, and how long the run waited
   submission.csv           the final submission (final/submission_<rank>.csv too for top_k)
 ```
 
@@ -172,7 +173,13 @@ Stated here because they affect how runs are read.
   - Red-team check: `scripts/redteam_retrieval.py` plants an instruction in an allowlisted page and checks whether it reaches A2's prompt, the cards and A3's scripts. Results are under "Red-team" below.
 - **Node files:** IDs are `n0`, `n1`, ... in creation order, and `Node.script_path` is relative to the run folder.
 - **Budget:** the clock starts before `prepare`, and time waiting on the LLM counts. A script's timeout is `script_timeout_s` or the remaining budget, whichever is smaller.
-- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image` and the `retrieval` section.
+- **LLM outages:** an API failure that outlasts the client's own retries is not the agent's fault, so it produces no node.
+  - The half-made node is discarded and its folder is moved to `nodes/_unfinished/`. A pending redirect is kept, and the controller waits `llm.outage_wait_s` (30 s), doubling up to 5 minutes, then tries again.
+  - The failed attempt and the wait are not charged to the budget, like the time between a crash and a resume. Every failure is logged to `llm_errors.jsonl`.
+  - After `llm.outage_retries` (5) failures in a row, the run writes a checkpoint with `stop_reason: llm_unavailable` and `done: false` and exits. `--resume` continues it.
+  - A2 does not fall back to the hand-written cards during an outage; it runs again on the next draft. A failed A4 call leaves the findings unchanged until the next node.
+- **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
+- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
 
 ## Red-team: prompt injection through A2 (19 Oct, Gemini 3.5 Flash Lite, one seed, 3 drafts per mode)
 

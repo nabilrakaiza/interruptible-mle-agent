@@ -4,4 +4,7 @@ One line per member per week. Used for the contribution statement in the final r
 
 | Week | Member | Work |
 |---|---|---|
-| | | |
+| 21 to 27 Sep | Nabil | Initial repository scaffold: package layout, shared contracts, configs, docs. |
+| 5 to 11 Oct | Nabil | Updated the proposal and wrote the work plan (roles, revised build dates, scope cuts). Built the first controller loop (A5, draft only, budget and node-cap stopping, checkpoints, best-val submission) and the coding agent's draft prompt (A3), tested with fakes. Documented the interfaces assumed for other roles in `core-agent-assumptions.md`. |
+| 12 to 18 Oct | Nabil | Completed the core agent: debug and improve operators, AIDE-style greedy selection, best-val / top-k / override final selection, interventions applied at safe points (stand-in `apply.py` for role 4), resume after a crash. Added the LLM client (OpenRouter MiMo for experiments, Gemini for local tests) with call logging, the Docker and subprocess sandbox adapters on role 1's `run_script`, and a local smoke run on a toy task. Stopped repeated improve attempts by listing earlier attempts in the prompt. |
+| 19 to 25 Oct | Nabil | Implemented A2 retrieval (unowned in the role table): allowlisted documentation, a blocklist for Kaggle and solution sites, passage ranking, validated model cards with fallback, and the prompt-injection red-team script. Made LLM outages non-fatal (wait and retry, resumable stop, time not charged to the budget). Improve prompts now list approaches from other branches, and doc passages are cleaned of formulas and boilerplate. |

@@ -2,9 +2,11 @@ import json
 from pathlib import Path
 from types import SimpleNamespace
 
+import openai
 import pytest
 
 from imle import llm as llm_module
+from imle.agents.coding import LLMUnavailable
 from imle.llm import OpenAICompatibleLLM, cost_usd, make_llm
 
 REPLY = "PLAN: x\n```python\npass\n```"
@@ -106,3 +108,23 @@ def test_make_llm_follows_the_config(tmp_path: Path):
 def test_cost_for_unknown_model():
     """Models without a price get no cost rather than a wrong one."""
     assert cost_usd("some-other-model", 10, 10) is None
+
+
+def test_api_failures_become_llm_unavailable(tmp_path: Path, monkeypatch):
+    """An API error after the client's retries, or a reply without choices, raises LLMUnavailable."""
+    monkeypatch.setattr(llm_module, "log_llm_call", None)
+    client = FakeOpenRouter()
+
+    def down(**kwargs):
+        """Fail as the openai client does when the server cannot be reached."""
+        raise openai.APIConnectionError(request=None)  # the request object is not needed here
+
+    client.chat.completions.create = down
+    with pytest.raises(LLMUnavailable, match="APIConnectionError"):
+        OpenAICompatibleLLM(None, tmp_path, client=client)(agent="a", system="s", user="u")
+
+    empty = FakeOpenRouter()
+    empty.chat.completions.create = lambda **kw: SimpleNamespace(choices=[], error={"message": "upstream 502"})
+    with pytest.raises(LLMUnavailable, match="upstream 502"):
+        OpenAICompatibleLLM(None, tmp_path, client=empty)(agent="a", system="s", user="u")
+    assert not (tmp_path / "llm_calls.jsonl").exists()

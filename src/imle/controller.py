@@ -31,7 +31,7 @@ from pydantic import BaseModel
 
 from imle import checkpoint
 from imle.agents import coding, retrieval
-from imle.agents.coding import LLM, CodingError, TaskContext
+from imle.agents.coding import LLM, CodingError, LLMUnavailable, TaskContext
 from imle.apply import apply_pending
 from imle.state import SearchState
 from imle.tree import Node, NodeStatus, Operator, Tree
@@ -291,7 +291,9 @@ class Controller:
         self.ctx: SavedContext | None = None
         self.done = False
         self._elapsed_before = 0.0
+        self._paused_s = 0.0  # time lost to LLM outages, not charged to the budget
         self._t0 = time.monotonic()
+        self._sleep = time.sleep  # replaced in tests
 
     @classmethod
     def resume(cls, run_dir: Path, **deps: Any) -> Controller:
@@ -330,8 +332,8 @@ class Controller:
         return self.run_dir / "nodes" / node_id
 
     def elapsed_s(self) -> float:
-        """Seconds of budget used, including time before a resume."""
-        return self._elapsed_before + time.monotonic() - self._t0
+        """Seconds of budget used, including time before a resume and excluding LLM outages."""
+        return self._elapsed_before + time.monotonic() - self._t0 - self._paused_s
 
     def remaining_s(self) -> float:
         """Seconds of wall-clock budget left, after rebudgets. Negative once it is spent."""
@@ -358,6 +360,11 @@ class Controller:
 
         Prepares the task (unless resuming), adds nodes until a stopping rule fires, then
         chooses the final submission. A run that already finished is returned unchanged.
+
+        If the LLM API fails, the half-made node is discarded and the controller waits and
+        tries again; see outage(). After `llm.outage_retries` failures in a row it writes a
+        checkpoint with stop_reason "llm_unavailable" and raises LLMUnavailable. The run is
+        not finished, so `--resume` continues it.
         """
         if self.done:
             return self.tree
@@ -365,15 +372,60 @@ class Controller:
             self.prepare()
             self.safe_point(current_node=None)
 
+        failures = 0
         while (reason := self.stop_reason()) is None:
+            started = time.monotonic()
+            forced = self.state.forced_next
             operator, parent_id = self.select()
-            node = self.run_node(operator, parent_id)
+            try:
+                node = self.run_node(operator, parent_id)
+            except LLMUnavailable as e:
+                failures += 1
+                self.state.forced_next = forced  # a pending redirect is retried, not lost
+                self.outage(e, failures, started)
+                continue
+            failures = 0
             if self.reflect is not None and self.agent_on("reflection"):
-                self.findings = self.reflect(self.llm, self.tree, self.findings, self.run_dir)
+                try:
+                    self.findings = self.reflect(self.llm, self.tree, self.findings, self.run_dir)
+                except LLMUnavailable as e:  # findings stay as they were; A4 runs again after the next node
+                    self.log_outage(e, failures=0, wait_s=0.0, during="reflection")
             self.safe_point(current_node=node.id)
 
         self.finalize(reason)
         return self.tree
+
+    def outage(self, error: LLMUnavailable, failures: int, started: float) -> None:
+        """Handle a failed LLM call during a node: discard the node, then wait or stop.
+
+        Waits `llm.outage_wait_s`, doubling with each failure in a row, at most 5 minutes.
+        The failed attempt and the wait are not charged to the budget, like the time between
+        a crash and a resume. Raises the error once there have been `llm.outage_retries` failures.
+        """
+        llm_cfg = self.cfg.get("llm") or {}
+        retries = llm_cfg.get("outage_retries", 5)
+        for node_id in [n.id for n in self.tree.nodes.values() if n.status == NodeStatus.RUNNING]:
+            del self.tree.nodes[node_id]  # never checkpointed, so nothing else refers to it
+        self._set_aside_unfinished_nodes()
+
+        if failures >= retries:
+            self.log_outage(error, failures, wait_s=0.0, during="node")
+            self._paused_s += time.monotonic() - started
+            self.write_checkpoint(current_node=None, stop_reason="llm_unavailable", llm_error=str(error))
+            raise error
+        wait_s = min(llm_cfg.get("outage_wait_s", 30) * 2 ** (failures - 1), 300)
+        self.log_outage(error, failures, wait_s, during="node")
+        print(f"warning: LLM unavailable ({failures}/{retries}), retrying in {wait_s:.0f}s: {error}")
+        self._sleep(wait_s)
+        self._paused_s += time.monotonic() - started
+
+    def log_outage(self, error: Exception, failures: int, wait_s: float, during: str) -> None:
+        """Append one record to llm_errors.jsonl, for the cost analysis (wall clock lost to outages)."""
+        record = {"timestamp": _now(), "during": during, "failures_in_a_row": failures,
+                  "wait_s": wait_s, "error": str(error)}
+        self.run_dir.mkdir(parents=True, exist_ok=True)
+        with (self.run_dir / "llm_errors.jsonl").open("a", encoding="utf-8") as f:
+            f.write(json.dumps(record) + "\n")
 
     def prepare(self) -> None:
         """Save the config, let A1 build the splits, and set up the shared workspace."""
@@ -447,6 +499,7 @@ class Controller:
         return coding.improve(
             self.llm, self.ctx, timeout_s, script, parent.plan, parent.val_score, output,
             findings=findings, cards=self.cards(), tried=self.tried_improvements(parent),
+            elsewhere=self.other_approaches(parent),
         )
 
     def tried_improvements(self, parent: Node) -> list[tuple[str, str]]:
@@ -468,6 +521,29 @@ class Controller:
                 outcome = f"failed ({(child.error or 'unknown error').split(':')[0]})"
             tried.append((child.plan, outcome))
         return tried
+
+    def other_approaches(self, parent: Node, limit: int = 12) -> list[tuple[str, str]]:
+        """(plan, outcome) for drafts and improves on other branches, the `limit` most recent.
+
+        Leaves out `parent` and its ancestors (the history of the script being improved),
+        its own improve children (listed by tried_improvements), debug nodes (their plans
+        describe fixes, not approaches) and nodes still running.
+        """
+        lineage, node = set(), parent
+        while node is not None:
+            lineage.add(node.id)
+            node = self.tree.nodes.get(node.parent_id) if node.parent_id else None
+        out = []
+        for n in self.tree.nodes.values():
+            if (n.id in lineage or n.parent_id == parent.id or n.operator == Operator.DEBUG
+                    or n.status == NodeStatus.RUNNING or not n.plan):
+                continue
+            if n.val_score is not None:
+                outcome = f"validation {n.val_score:.4f}"
+            else:
+                outcome = f"failed ({(n.error or 'unknown error').split(':')[0]})"
+            out.append((n.plan, outcome))
+        return out[-limit:]
 
     def run_node(self, operator: Operator, parent_id: str | None) -> Node:
         """Create one node: generate a script, screen it, execute it, score it, record the result.
@@ -527,7 +603,10 @@ class Controller:
             return
         for d in nodes_root.iterdir():
             if d.is_dir() and d.name.startswith("n") and d.name not in self.tree.nodes:
-                target = nodes_root / "_unfinished" / f"{d.name}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+                stem = nodes_root / "_unfinished" / f"{d.name}_{datetime.now(timezone.utc):%Y%m%dT%H%M%S}"
+                target, n = stem, 1
+                while target.exists():  # the same ID set aside twice within a second
+                    target, n = stem.with_name(f"{stem.name}_{n}"), n + 1
                 target.parent.mkdir(exist_ok=True)
                 d.rename(target)
 
@@ -677,7 +756,11 @@ def main() -> None:
         controller = Controller.resume(run_dir, **deps)
     else:
         controller = Controller(cfg, args.task, seed, run_dir, **deps)
-    controller.run()
+    try:
+        controller.run()
+    except LLMUnavailable as e:
+        raise SystemExit(f"stopped, the LLM API is unavailable ({e}). Continue later with: "
+                         f"python -m imle.controller --resume {run_dir}") from e
     print(f"run finished: {run_dir}")
 
 
