@@ -175,21 +175,15 @@ def beats(tree: Tree, new: float, old: float, min_rel_gain: float) -> bool:
     return gain >= min_rel_gain * max(abs(old), 1e-12)
 
 
-def improve_failures(tree: Tree, search: dict) -> dict[str, int]:
-    """For each node, the failed improve attempts on its improve chain.
+def improve_chains(tree: Tree, search: dict) -> tuple[dict[str, str], dict[str, int]]:
+    """Each node's improve chain, as (node id -> id of the node that started the chain, chain -> failures).
 
     An improve that does not beat its parent by improve_min_rel_gain (worse, buggy, or
-    better by only a little) is a failed attempt and stays in its parent's chain. An
-    improve that does beat it starts a new chain. Every node in a chain shares the chain's
-    count, so once it reaches improve_patience the whole chain is exhausted.
-
-    Before, the count was per node, so a run of tiny gains (0.12738, 0.12736, ...) never
-    ran out of patience: each new node was the best by raw score and started at zero. This
-    follows the proposal (Section 3.6): an improve chain ends after a fixed number of
-    attempts below the relative threshold.
+    better by only a little) is a failed attempt and stays in its parent's chain. Any
+    other node starts a chain of its own.
     """
     gain = search["improve_min_rel_gain"]
-    chain: dict[str, str] = {}  # node id -> id of the node that started its chain
+    chain: dict[str, str] = {}
     failed: dict[str, int] = {}
     for n in tree.nodes.values():  # creation order: a parent always comes before its children
         parent = tree.nodes.get(n.parent_id) if n.parent_id else None
@@ -201,6 +195,21 @@ def improve_failures(tree: Tree, search: dict) -> dict[str, int]:
         else:
             chain[n.id] = n.id
             failed[n.id] = 0
+    return chain, failed
+
+
+def improve_failures(tree: Tree, search: dict) -> dict[str, int]:
+    """For each node, the failed improve attempts on its improve chain (see improve_chains).
+
+    Every node in a chain shares the chain's count, so once it reaches improve_patience
+    the whole chain is exhausted.
+
+    Before, the count was per node, so a run of tiny gains (0.12738, 0.12736, ...) never
+    ran out of patience: each new node was the best by raw score and started at zero. This
+    follows the proposal (Section 3.6): an improve chain ends after a fixed number of
+    attempts below the relative threshold.
+    """
+    chain, failed = improve_chains(tree, search)
     return {node_id: failed[start] for node_id, start in chain.items()}
 
 

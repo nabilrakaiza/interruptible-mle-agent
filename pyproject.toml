@@ -18,6 +18,8 @@ dependencies = [
 dev = ["pytest", "ruff"]
 # What generated scripts may import (agents/coding.py PACKAGES); needed for --sandbox subprocess.
 sandbox = ["numpy", "pandas", "scipy", "scikit-learn", "pillow"]
+# Figures for the analysis scripts (scripts/trajectory.py).
+analysis = ["matplotlib"]
 
 [build-system]
 requires = ["setuptools>=61"]
