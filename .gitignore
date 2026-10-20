@@ -17,3 +17,6 @@ __pycache__/
 .ruff_cache/
 *.egg-info/
 .venv/
+
+# Created by mlebench commands run from the repo root
+cache/
