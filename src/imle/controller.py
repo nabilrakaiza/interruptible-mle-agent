@@ -706,6 +706,8 @@ class Controller:
             return self._close(node, error=f"invalid_submission: {score.error or 'no validation score'}")
         node.val_score = score.val_score
         node.probe_score = score.probe_score
+        # For analysis only: an evaluator that can grade the test rows at once (the stand-in) reports it here.
+        node.test_score = getattr(score, "test_score", None)
         return self._close(node)
 
     def _close(self, node: Node, error: str | None = None) -> Node:
@@ -827,6 +829,9 @@ def main() -> None:
     parser.add_argument("--run-dir", help="default: runs/<condition>_<task>_seed<seed>_<utc time>")
     parser.add_argument("--resume", metavar="RUN_DIR", help="continue a run from its latest checkpoint")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override sandbox.backend")
+    parser.add_argument("--evaluator", choices=["a1", "stand_in"],
+                        help="a1: role 3's agents/evaluation.py (default); stand_in: imle/stand_in_evaluation.py, "
+                             "the temporary MLE-bench evaluator. New runs only; a resumed run keeps its evaluator")
     parser.add_argument("--provider", choices=["openrouter", "gemini"],
                         help="override llm.provider for a new run; a resumed run keeps the provider it started with")
     args = parser.parse_args()
@@ -843,6 +848,8 @@ def main() -> None:
         cfg = load_config(Path(args.config))
         if args.provider:
             cfg.setdefault("llm", {})["provider"] = args.provider
+        if args.evaluator:
+            cfg["evaluator"] = args.evaluator
         seed = args.seed
         stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         default_name = f"{cfg.get('condition', 'run')}_{args.task}_seed{seed}_{stamp}"
@@ -852,6 +859,8 @@ def main() -> None:
     from imle.execution import make_sandbox
     from imle.llm import make_llm
 
+    if cfg.get("evaluator", "a1") == "stand_in":
+        from imle import stand_in_evaluation as evaluation
     for name in ("prepare", "score"):
         if not hasattr(evaluation, name):
             raise SystemExit(

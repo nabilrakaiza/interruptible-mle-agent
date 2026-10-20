@@ -19,7 +19,7 @@ def args(**overrides) -> Namespace:
     """Launcher arguments for a real-task run, with overrides."""
     base = {
         "config": str(ROOT / "configs" / "conditions" / "c1_autonomous.yaml"), "task": "spooky-author-identification",
-        "seed": 3, "provider": None, "sandbox": "subprocess", "name": None, "smoke": False, "dry_run": False,
+        "seed": 3, "provider": None, "evaluator": None, "sandbox": "subprocess", "name": None, "smoke": False, "dry_run": False,
         "nodes": 6, "minutes": 10.0,
     }
     return Namespace(**{**base, **overrides})

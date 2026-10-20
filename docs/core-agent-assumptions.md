@@ -105,6 +105,14 @@ Why this shape: the holdout labels never enter the sandbox, the script cannot te
 
 Without `prepare` and `score` the controller's command line exits with a message saying so.
 
+**Temporary stand-in (20 Oct).** Until role 3's evaluator is pushed, `imle/stand_in_evaluation.py` implements `prepare` and `score` for the six MLE-bench tasks, so real runs can start. Choose it with `--evaluator stand_in` (stored in the run's `config.yaml`, so a resume keeps it). It has no leakage screen.
+
+- **Data:** reads what `mlebench prepare -c <task>` wrote, from `$MLEBENCH_DATA_DIR` or MLE-bench's default cache folder. Each run gets `stand_in/input/` (what the agent sees) and `stand_in/harness/` (labels, never shown).
+- **Format:** every task becomes `train.csv` and `predict.csv` with an `id` column, plus `images/` (cactus, leaf) or `geometry/<id>.xyz` (nomad, with renumbered ids because train and test ids overlap). Pizza's JSON becomes CSV, keeping only the fields the test set has. The competition description is followed by a "Files for this run" note.
+- **Splits:** MLE-bench's public train set is split into train / validation (`splits.val_fraction`, 0.2) / probe (`splits.probe_fraction`, 0.1), stratified for classification. The split uses `splits.seed` (default 0), not the run seed, so every condition and seed sees the same split. The test rows are MLE-bench's test set.
+- **Scores:** the same metric code as MLE-bench's `grade.py`, and the same rejections (wrong ids, probabilities not summing to one, negative regression values). `score` also returns `test_score`, which the controller stores on the node for analysis only; no prompt shows it. The test rows go to `submission.csv` in MLE-bench's format. Checked on all six tasks: the test score equals `mlebench grade-sample` on that file.
+- **Isolation:** with `--sandbox subprocess` a script could read `../stand_in/harness/labels.csv` or MLE-bench's private folder. Docker mounts only the workspace, so this needs role 1's image.
+
 ## Role 3: reflection (`agents/reflection.py`, assumed: nothing pushed yet)
 
 ```python

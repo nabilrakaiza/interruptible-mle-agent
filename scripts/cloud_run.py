@@ -117,6 +117,7 @@ def command(args: argparse.Namespace, run_dir: Path, how: str) -> list[str]:
     if how == "resume":
         return [*cmd, "--resume", str(run_dir)]
     cmd += ["--config", args.config, "--task", args.task, "--seed", str(args.seed), "--run-dir", str(run_dir)]
+    cmd += ["--evaluator", args.evaluator] if args.evaluator else []
     return [*cmd, "--provider", args.provider] if args.provider else cmd
 
 
@@ -160,6 +161,8 @@ def main() -> None:
     parser.add_argument("--task", help="MLE-bench competition ID (not needed with --smoke)")
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--provider", choices=["openrouter", "gemini"], help="override llm.provider for a new run")
+    parser.add_argument("--evaluator", choices=["a1", "stand_in"],
+                        help="stand_in: the temporary MLE-bench evaluator, until role 3's A1 exists")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], default="subprocess",
                         help="subprocess by default: Colab and Kaggle cannot run Docker")
     parser.add_argument("--runs-root", default=str(ROOT / "runs"), help="where the run folder lives while it runs")
