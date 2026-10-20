@@ -29,13 +29,13 @@ NODES = [
 ]
 
 
-def make_run(run_dir: Path) -> None:
+def make_run(run_dir: Path, nodes: list[tuple] = NODES) -> None:
     """A finished C1 run with one node of every kind, written the way the controller writes it."""
     tree = Tree(higher_is_better=False)
     (run_dir / "workspace" / "input").mkdir(parents=True)
     for name in ("train.csv", "predict.csv", "extra.csv"):
         (run_dir / "workspace" / "input" / name).write_text("id\n1\n")
-    for nid, op, parent, status, val, probe, error, stderr, preds, uses_extra in NODES:
+    for nid, op, parent, status, val, probe, error, stderr, preds, uses_extra in nodes:
         d = run_dir / "nodes" / nid
         (d / "output").mkdir(parents=True)
         script = "pd.read_csv('input/train.csv'); pd.read_csv('input/predict.csv')"
@@ -61,6 +61,21 @@ def test_runtime_subtypes():
         "shape_mismatch"
     assert tax.runtime_subtype("sklearn.exceptions.NotFittedError: not fitted")[0] == "other"
     assert tax.runtime_subtype("Killed") == ("other", "")
+
+
+def test_killed_scripts_are_out_of_memory(tmp_path: Path):
+    """A script killed without a timeout and without a Python exception gets the out_of_memory subtype."""
+    assert tax.killed("runtime_error: exit code 137 (killed, most likely out of memory: the limit is 4 GB)\n")
+    assert tax.killed("runtime_error: exit code -9 (killed)")
+    assert not tax.killed("runtime_error: exit code 1\nKeyError: 'a'")
+    assert not tax.killed("runtime_error: exit code 1370") and not tax.killed(None)
+
+    killed = ("n3", IMP, "n1", B, None, None, "runtime_error: exit code 137 (killed, most likely out of memory)",
+              "", None, True)
+    run_dir = tmp_path / "run"
+    make_run(run_dir, [killed if n[0] == "n3" else n for n in NODES])
+    rows, _ = tax.classify_run(run_dir)
+    assert {r["node"]: r for r in rows}["n3"]["subtype"] == "out_of_memory"
 
 
 def test_classify_run(tmp_path: Path):

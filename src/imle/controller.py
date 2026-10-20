@@ -27,6 +27,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Protocol
 
+import pandas as pd
 import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel
@@ -175,6 +176,36 @@ def beats(tree: Tree, new: float, old: float, min_rel_gain: float) -> bool:
     """Whether `new` improves on `old` by at least `min_rel_gain`, relative to |old|."""
     gain = (new - old) if tree.higher_is_better else (old - new)
     return gain >= min_rel_gain * max(abs(old), 1e-12)
+
+
+def same_predictions(a: Path, b: Path) -> bool:
+    """Whether two predictions.csv files hold the same predictions (same ids, values within 1e-9).
+
+    Rows may be in any order: both files are sorted on their first column. A missing or
+    unreadable file counts as different.
+    """
+    if not (a.exists() and b.exists()):
+        return False
+    try:
+        x, y = pd.read_csv(a), pd.read_csv(b)
+    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError):
+        return False
+    if list(x.columns) != list(y.columns) or len(x) != len(y) or x.empty:
+        return False
+    key = x.columns[0]
+    x, y = x.sort_values(key).reset_index(drop=True), y.sort_values(key).reset_index(drop=True)
+    for col in x.columns:
+        if pd.api.types.is_numeric_dtype(x[col]) and pd.api.types.is_numeric_dtype(y[col]):
+            if not ((x[col] - y[col]).abs().fillna(0) <= 1e-9).all():
+                return False
+        elif not x[col].astype(str).equals(y[col].astype(str)):
+            return False
+    return True
+
+
+# Exit codes of a script killed by SIGKILL without a timeout: 137 from Docker, -9 from a local process.
+# With Docker's memory limit this nearly always means the script ran out of memory.
+KILLED_EXIT_CODES = (137, -9)
 
 
 def improve_chains(tree: Tree, search: dict) -> tuple[dict[str, str], dict[str, int]]:
@@ -400,6 +431,11 @@ class Controller:
         """Seconds of wall-clock budget left, after rebudgets. Negative once it is spent."""
         return self.cfg["budget"]["wall_clock_s"] + self.state.extra_budget_s - self.elapsed_s()
 
+    def limits(self) -> dict[str, float]:
+        """The CPU and memory limits A3 is told about: sandbox.cpus and sandbox.memory_gb."""
+        sandbox = self.cfg.get("sandbox") or {}
+        return {"cpus": sandbox.get("cpus", coding.CPUS), "memory_gb": sandbox.get("memory_gb", coding.MEMORY_GB)}
+
     def script_timeout_s(self) -> float:
         """Timeout for the next script: the configured limit or the remaining budget, whichever is smaller."""
         return max(1.0, min(self.cfg["budget"]["script_timeout_s"], self.remaining_s()))
@@ -550,7 +586,8 @@ class Controller:
         if operator == Operator.DRAFT:
             previous = [n.plan for n in self.tree.nodes.values() if n.operator == Operator.DRAFT and n.plan]
             return coding.draft(
-                self.llm, self.ctx, timeout_s, findings=findings, cards=self.cards(), previous_plans=previous
+                self.llm, self.ctx, timeout_s, findings=findings, cards=self.cards(), previous_plans=previous,
+                **self.limits(),
             )
 
         parent_dir = self.node_dir(parent.id)
@@ -561,21 +598,22 @@ class Controller:
             error = parent.error or "unknown error"
             if stderr.strip() and "runtime_error" not in error:  # a runtime error already carries its stderr
                 error += "\n\nEnd of stderr:\n" + coding.tail(stderr)
-            return coding.debug(self.llm, self.ctx, timeout_s, script, error, findings=findings)
+            return coding.debug(self.llm, self.ctx, timeout_s, script, error, findings=findings, **self.limits())
 
         stdout = parent_dir / "stdout.txt"
         output = stdout.read_text(encoding="utf-8") if stdout.exists() else ""
         return coding.improve(
             self.llm, self.ctx, timeout_s, script, parent.plan, parent.val_score, output,
             findings=findings, cards=self.cards(), tried=self.tried_improvements(parent),
-            elsewhere=self.other_approaches(parent),
+            elsewhere=self.other_approaches(parent), **self.limits(),
         )
 
     def tried_improvements(self, parent: Node) -> list[tuple[str, str]]:
         """(plan, outcome) for each finished improve attempt on `parent` that did not beat it.
 
         Successful attempts are left out: they are already better nodes, and the search
-        moves to them.
+        moves to them. An attempt whose predictions are identical to the parent's is marked
+        as having had no effect, so the model knows the change never reached the predictions.
         """
         tried = []
         min_gain = self.cfg["search"]["improve_min_rel_gain"]
@@ -586,6 +624,8 @@ class Controller:
                 if beats(self.tree, child.val_score, parent.val_score, min_gain):
                     continue
                 outcome = f"validation {child.val_score:.4f}, not better"
+                if same_predictions(self.predictions_path(child.id), self.predictions_path(parent.id)):
+                    outcome = "no effect: predictions identical to this script's"
             else:
                 outcome = f"failed ({(child.error or 'unknown error').split(':')[0]})"
             tried.append((child.plan, outcome))
@@ -613,6 +653,10 @@ class Controller:
                 outcome = f"failed ({(n.error or 'unknown error').split(':')[0]})"
             out.append((n.plan, outcome))
         return out[-limit:]
+
+    def predictions_path(self, node_id: str) -> Path:
+        """Where a node's script wrote its predictions."""
+        return self.node_dir(node_id) / "output" / "predictions.csv"
 
     def run_node(self, operator: Operator, parent_id: str | None) -> Node:
         """Create one node: generate a script, screen it, execute it, score it, record the result.
@@ -648,6 +692,12 @@ class Controller:
         (node_dir / "stderr.txt").write_text(result.stderr, encoding="utf-8")
         if result.timed_out:
             return self._close(node, error=f"timeout: killed after {timeout_s:.0f}s")
+        if result.exit_code in KILLED_EXIT_CODES:
+            memory = self.limits()["memory_gb"]
+            return self._close(node, error=(
+                f"runtime_error: exit code {result.exit_code} (killed, most likely out of memory: "
+                f"the limit is {memory:g} GB)\n{coding.tail(result.stderr)}"
+            ))
         if result.exit_code != 0:
             return self._close(node, error=f"runtime_error: exit code {result.exit_code}\n{coding.tail(result.stderr)}")
 

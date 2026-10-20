@@ -18,6 +18,10 @@ from typing import Any, Protocol
 # Packages the prompt tells the model it may import. Must match the sandbox image.
 PACKAGES = "numpy, pandas, scipy, scikit-learn, pillow"
 
+# Defaults for the limits stated in the prompt; the controller passes sandbox.cpus and sandbox.memory_gb.
+CPUS = 2
+MEMORY_GB = 4
+
 TAIL_CHARS = 2000
 PLAN_CHARS = 300
 OTHER_PLAN_CHARS = 200  # plans from other branches are shown shorter, there can be more of them
@@ -146,6 +150,8 @@ def _context(
     timeout_s: float,
     findings: Sequence[dict[str, Any]] = (),
     cards: Sequence[dict[str, Any]] = (),
+    cpus: int = CPUS,
+    memory_gb: float = MEMORY_GB,
 ) -> str:
     """The part of the prompt every operator shares: task, data, output contract, constraints, memory."""
     sections = [
@@ -169,7 +175,8 @@ The labels for predict.csv are not available to you.""",
         f"""# Constraints
 
 - One self-contained script. No network access and no user input.
-- CPU only, 2 cores. The script is killed after {int(timeout_s)} seconds, so stay well under that.
+- CPU only, {cpus} cores and {memory_gb:g} GB of memory. A script that exceeds the memory limit is killed.
+- The script is killed after {int(timeout_s)} seconds, so stay well under that.
 - Available packages: {PACKAGES}.""",
     ]
     if findings:
@@ -185,13 +192,15 @@ def draft_prompt(
     findings: Sequence[dict[str, Any]] = (),
     cards: Sequence[dict[str, Any]] = (),
     previous_plans: Sequence[str] = (),
+    cpus: int = CPUS,
+    memory_gb: float = MEMORY_GB,
 ) -> str:
     """The user prompt for a draft: a new solution, different from the earlier drafts."""
     previous = ""
     if previous_plans:
         listed = "\n".join(f"- {p[:PLAN_CHARS]}" for p in previous_plans)
         previous = f"\n\nEarlier drafts in this run used these plans. Try a different approach:\n{listed}"
-    return f"""{_context(ctx, timeout_s, findings, cards)}
+    return f"""{_context(ctx, timeout_s, findings, cards, cpus, memory_gb)}
 
 # Instructions
 
@@ -207,9 +216,11 @@ def debug_prompt(
     script: str,
     error: str,
     findings: Sequence[dict[str, Any]] = (),
+    cpus: int = CPUS,
+    memory_gb: float = MEMORY_GB,
 ) -> str:
     """The user prompt for a debug: the failed script and what went wrong."""
-    return f"""{_context(ctx, timeout_s, findings)}
+    return f"""{_context(ctx, timeout_s, findings, (), cpus, memory_gb)}
 
 # Previous script
 
@@ -240,6 +251,8 @@ def improve_prompt(
     cards: Sequence[dict[str, Any]] = (),
     tried: Sequence[tuple[str, str]] = (),
     elsewhere: Sequence[tuple[str, str]] = (),
+    cpus: int = CPUS,
+    memory_gb: float = MEMORY_GB,
 ) -> str:
     """The user prompt for an improve: a working script, its score, and a request for one change.
 
@@ -261,7 +274,7 @@ def improve_prompt(
             "\n\nOther branches of this run already used these approaches, with the validation scores "
             "shown. Switching to one of them is not a new idea:\n" + listed
         )
-    return f"""{_context(ctx, timeout_s, findings, cards)}
+    return f"""{_context(ctx, timeout_s, findings, cards, cpus, memory_gb)}
 
 # Current best script
 
@@ -309,7 +322,8 @@ def _generate(llm: LLM, prompt: str, attempts: int = 2) -> tuple[str, str]:
 def draft(llm: LLM, ctx: TaskContext, timeout_s: float, **memory: Any) -> tuple[str, str]:
     """A new solution from scratch. Returns (plan, script).
 
-    `memory` is passed to draft_prompt: findings, cards and previous_plans.
+    `memory` is passed to draft_prompt: findings, cards, previous_plans, and the cpus and
+    memory_gb limits.
     """
     return _generate(llm, draft_prompt(ctx, timeout_s, **memory))
 

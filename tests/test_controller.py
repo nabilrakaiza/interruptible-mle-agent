@@ -99,10 +99,14 @@ class FakeEvaluator:
 class FakeSandbox:
     """Pretends to run scripts: writes predictions.csv, or returns a scripted failure."""
 
-    def __init__(self, outcomes: list[Exec] | None = None, on_run=None):
-        """`outcomes` are used in order (clean exits after they run out); `on_run` gets each node's output folder."""
+    def __init__(self, outcomes: list[Exec] | None = None, on_run=None, same_predictions: bool = False):
+        """`outcomes` are used in order (clean exits after they run out); `on_run` gets each node's output folder.
+
+        Each run writes different predictions, unless `same_predictions` is set.
+        """
         self.outcomes = list(outcomes or [])
         self.on_run = on_run
+        self.same_predictions = same_predictions
         self.scripts: list[str] = []
 
     def output_path(self, output_dir: Path) -> str:
@@ -116,7 +120,8 @@ class FakeSandbox:
             self.on_run(output_dir)
         result = self.outcomes.pop(0) if self.outcomes else Exec()
         if result.exit_code == 0 and not result.timed_out:
-            (output_dir / "predictions.csv").write_text("id,y\n3,0.5\n4,0.5\n")
+            y = 0.5 if self.same_predictions else len(self.scripts) / 100
+            (output_dir / "predictions.csv").write_text(f"id,y\n3,0.5\n4,{y}\n")
         return result
 
 
@@ -568,3 +573,40 @@ def test_machine_is_recorded_on_start_and_resume(tmp_path: Path, monkeypatch):
     records = [json.loads(line) for line in (c.run_dir / "machine.jsonl").read_text().splitlines()]
     assert [r["event"] for r in records] == ["start", "resume"]
     assert records[0]["platform"] == "kaggle" and records[1]["step"] > 0
+
+
+def test_prompts_state_the_configured_limits(tmp_path: Path):
+    """Every operator's prompt states sandbox.cpus and sandbox.memory_gb from the config."""
+    sandbox = FakeSandbox([Exec(exit_code=1, stderr="boom")])
+    cfg = make_cfg(budget={"max_nodes": 3}, search={"num_drafts": 1, "debug_prob": 1.0})
+    cfg["sandbox"].update({"cpus": 4, "memory_gb": 8})
+    llm = ScriptedLLM()
+    make_controller(tmp_path, cfg, llm=llm, sandbox=sandbox).run()
+
+    assert len(llm.prompts) == 3  # draft, debug, improve
+    for prompt in llm.prompts:
+        assert "CPU only, 4 cores and 8 GB of memory. A script that exceeds the memory limit is killed." in prompt
+
+
+def test_a_killed_script_is_reported_as_out_of_memory(tmp_path: Path):
+    """Exit code 137 without a timeout is recorded as a likely memory kill, and the debug prompt says so."""
+    sandbox = FakeSandbox([Exec(exit_code=137), Exec(exit_code=-9, stderr="partial output")])
+    cfg = make_cfg(budget={"max_nodes": 3}, search={"num_drafts": 1, "debug_prob": 1.0})
+    llm = ScriptedLLM()
+    tree = make_controller(tmp_path, cfg, llm=llm, sandbox=sandbox).run()
+
+    n0, n1 = tree.nodes["n0"], tree.nodes["n1"]
+    assert n0.error.startswith("runtime_error: exit code 137 (killed, most likely out of memory: the limit is 4 GB)")
+    assert n1.error.startswith("runtime_error: exit code -9 (killed") and "partial output" in n1.error
+    assert "most likely out of memory: the limit is 4 GB" in llm.prompts[1]
+
+
+def test_improve_with_identical_predictions_is_marked_as_no_effect(tmp_path: Path):
+    """An improve that wrote the same predictions as its parent is shown as having had no effect."""
+    cfg = make_cfg(budget={"max_nodes": 3}, search={"num_drafts": 1, "debug_prob": 0.0})
+    llm = ScriptedLLM()
+    c = make_controller(tmp_path, cfg, llm=llm, sandbox=FakeSandbox(same_predictions=True),
+                        evaluator=FakeEvaluator([0.5, 0.5]))
+    c.run()
+
+    assert "- Attempt 2. -> no effect: predictions identical to this script's" in llm.prompts[2]

@@ -9,7 +9,8 @@ Each node gets one category:
     generation_error     the model returned no script, twice
     leakage              A1's screen rejected the script
     timeout              killed at the time limit
-    runtime_error        non-zero exit; `subtype` says which exception (import_error, ...)
+    runtime_error        non-zero exit; `subtype` says which exception (import_error, ...),
+                         or out_of_memory for a script killed without a timeout (exit code 137)
     invalid_submission   ran, but predictions.csv was missing or malformed
     pruned / abandoned   stopped by an intervention
 
@@ -39,7 +40,8 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-from imle.controller import beats, latest_complete_checkpoint
+from imle.controller import KILLED_EXIT_CODES, beats, latest_complete_checkpoint
+from imle.controller import same_predictions as controller_same_predictions
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -61,6 +63,7 @@ SUBTYPES = {
     "PermissionError": "permission_error",
 }
 _SHAPE = re.compile(r"shape|dimension|features|inconsistent numbers of samples|length", re.IGNORECASE)
+_EXIT_CODE = re.compile(r"runtime_error: exit code (-?\d+)")
 _EXCEPTION_LINE = re.compile(r"^([A-Za-z_][\w.]*(?:Error|Exception|Exit|Interrupt))\b:?\s*(.*)$")
 
 
@@ -84,6 +87,12 @@ def category(node: Node) -> str:
     if node.status == NodeStatus.RUNNING:
         return "unfinished"
     return (node.error or "unknown").split(":")[0].strip() or "unknown"
+
+
+def killed(error: str | None) -> bool:
+    """Whether the controller recorded the script as killed without a timeout (most likely out of memory)."""
+    m = _EXIT_CODE.match(error or "")
+    return m is not None and int(m.group(1)) in KILLED_EXIT_CODES
 
 
 def runtime_subtype(stderr: str) -> tuple[str, str]:
@@ -118,24 +127,8 @@ def worse(tree: Tree, a: float, b: float) -> bool:
 
 def same_predictions(run_dir: Path, a: str, b: str) -> bool:
     """Whether two nodes wrote the same predictions (same ids, values within 1e-9)."""
-    paths = [run_dir / "nodes" / n / "output" / "predictions.csv" for n in (a, b)]
-    if not all(p.exists() for p in paths):
-        return False
-    try:
-        x, y = (pd.read_csv(p) for p in paths)
-    except (pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError):
-        return False
-    if list(x.columns) != list(y.columns) or len(x) != len(y):
-        return False
-    key = x.columns[0]
-    x, y = x.sort_values(key).reset_index(drop=True), y.sort_values(key).reset_index(drop=True)
-    for col in x.columns:
-        if pd.api.types.is_numeric_dtype(x[col]) and pd.api.types.is_numeric_dtype(y[col]):
-            if not ((x[col] - y[col]).abs().fillna(0) <= 1e-9).all():
-                return False
-        elif not x[col].astype(str).equals(y[col].astype(str)):
-            return False
-    return True
+    a_path, b_path = (run_dir / "nodes" / n / "output" / "predictions.csv" for n in (a, b))
+    return controller_same_predictions(a_path, b_path)
 
 
 def unused_inputs(run_dir: Path, script: str) -> list[str]:
@@ -171,6 +164,8 @@ def classify_run(run_dir: Path) -> tuple[list[dict], dict]:
             stderr_path = node_dir / "stderr.txt"
             stderr = stderr_path.read_text(errors="replace") if stderr_path.exists() else (node.error or "")
             row["subtype"], row["exception"] = runtime_subtype(stderr)
+            if row["subtype"] == "other" and killed(node.error):
+                row["subtype"] = "out_of_memory"
 
         labels = []
         if cat == "working" and parent is not None and parent.val_score is not None:

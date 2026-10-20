@@ -33,3 +33,5 @@ llm:
 sandbox:
   backend: docker            # docker | subprocess (no isolation, local testing only)
   image: imle-sandbox:latest # needs Python plus the packages in agents/coding.py
+  cpus: 2                    # limits stated in A3's prompt; role 1's Docker sandbox should enforce the same
+  memory_gb: 4

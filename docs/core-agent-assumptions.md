@@ -42,14 +42,10 @@ Tested against her branch in a test merge: everything works, and the only confli
 
 Still assumed:
 
-- **A Docker image with the packages.** `python:3.11-slim` has no numpy, pandas or scikit-learn, and the container has no network, so every script would fail on import. The controller uses `sandbox.image` (default `imle-sandbox:latest`). Role 1 needs to build that image, for example from:
-
-  ```dockerfile
-  FROM python:3.11-slim
-  RUN pip install --no-cache-dir numpy pandas scipy scikit-learn pillow
-  ```
+- **A Docker image with the packages.** `python:3.11-slim` has no numpy, pandas or scikit-learn, and the container has no network, so every script would fail on import. The controller uses `sandbox.image` (default `imle-sandbox:latest`). Her branch now has a Dockerfile with the packages; on 20 Oct role 2 asked role 1 to pin Python (3.13.6) and the packages in `docker-requirements.txt` to the versions role 2 tests with (numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1, pillow 12.3.0), and to set thread and cache variables for the locked-down container.
 
   The prompt tells the model it may use exactly these packages (`PACKAGES` in `agents/coding.py`). Tell role 2 if lightgbm, xgboost or torch are added.
+- **Limits.** The prompt states `sandbox.cpus` (2) and `sandbox.memory_gb` (4) from `configs/base.yaml`. `run_script` currently fixes 2 CPUs, 2 GB and a 128 MB `/tmp`; role 2 asked role 1 to read these keys, raise memory to 4 GB and `/tmp` to 1 GB, and set `--memory-swap` equal to `--memory`, so a script over the limit is killed at once (exit code 137) instead of swapping. The subprocess sandbox enforces no limits; the prompt still states them, so every run gets the same instructions.
 - **Output folder permissions.** The container runs as uid 65534. On Linux it cannot write to a host folder with mode 755, so `DockerSandbox` makes each node's output folder world-writable before the run.
 - **Abandon.** `run_script` names its container internally, so the controller cannot call `abandon_experiment` on a running node. This is fine because abandon is cut from scope.
 
@@ -166,7 +162,7 @@ Stated here because they affect how runs are read.
   - The count is per improve chain, not per node. An improve that does not beat its parent by the threshold (worse, buggy, or better by only a little) stays in its parent's chain, and every node in a chain shares its count. A run of tiny gains (0.12738, 0.12736, ...) therefore ends after `improve_patience` steps, and the whole chain is then skipped. An improve that beats its parent by the threshold starts a new chain. Before this, each such node was the new best and started at zero. A 200-node test run spent 198 nodes micro-tuning blend weights on one lineage this way.
   - With nothing to improve, debug if possible, else draft again. The search therefore ends only on budget or node cap.
 - **Final selection:** `best_val` takes the best working node by validation score. `top_k` takes the best `top_k` (default 3) and also writes `final/submission_<rank>.csv`. An applied `override` wins in every mode.
-- **Error categories:** `Node.error` starts with `generation_error`, `leakage`, `timeout`, `runtime_error` or `invalid_submission`. `generation_error` means the model returned no code block twice in a row; the others map onto the taxonomy in `experiments.md`.
+- **Error categories:** `Node.error` starts with `generation_error`, `leakage`, `timeout`, `runtime_error` or `invalid_submission`. A script killed without a timeout (exit code 137 from Docker, -9 locally) is recorded as `runtime_error: exit code 137 (killed, most likely out of memory: the limit is 4 GB)`, because such a script usually leaves no Python error and the debug prompt would otherwise have nothing to go on. `generation_error` means the model returned no code block twice in a row; the others map onto the taxonomy in `experiments.md`.
 - **Model cards (A2):** A2 has no owner in the role table, so role 2 implemented it in `agents/retrieval.py` (19 Oct). It is not part of the scope cut any more.
   - `retrieval.source: web` (the default): on the first draft, A2 fetches the documentation pages listed in `SOURCES` for the task's modality. Only HTTPS on `ALLOWED_HOSTS` (scikit-learn, NumPy, SciPy, pandas, Pillow docs) is allowed, and redirects off the list are refused. A blocklist overrides the allowlist, so it holds even if someone adds a host later. It covers `BLOCKED_HOSTS` and their subdomains (Kaggle, GitHub and other code hosts, Colab and notebook viewers, Medium and other ML blogs, Reddit, Stack Overflow, Papers with Code, Hugging Face, YouTube). It also covers URLs containing solution, winning, leaderboard, discussion, competition or write-up, and URLs naming one of the six competitions. Passages that mention Kaggle, a leaderboard, a winning entry or one of the competitions are removed before ranking and counted in the audit trail. It ranks the pages' passages against the task description with BM25 and asks the LLM (logged as agent `retrieval`) for cards in the fixed schema, each citing the excerpt it came from.
   - Every card is validated before A3 sees it: exactly the schema's fields, one of the task's modalities, a real source, capped lengths. Cards that look like instructions or code (URLs, `urllib`, `subprocess`, "ignore previous", Kaggle or leaderboard) that need a package the sandbox lacks, or that mention a competition are dropped.
@@ -180,8 +176,8 @@ Stated here because they affect how runs are read.
   - The failed attempt and the wait are not charged to the budget, like the time between a crash and a resume. Every failure is logged to `llm_errors.jsonl`.
   - After `llm.outage_retries` (5) failures in a row, the run writes a checkpoint with `stop_reason: llm_unavailable` and `done: false` and exits. `--resume` continues it.
   - A2 does not fall back to the hand-written cards during an outage; it runs again on the next draft. A failed A4 call leaves the findings unchanged until the next node.
-- **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
-- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
+- **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). An attempt whose predictions file is identical to the node's own is shown as "no effect", so the model knows the change never reached the predictions. This compares prediction files, never probe scores: the probe split stays hidden from the agent. It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
+- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image` / `sandbox.cpus` / `sandbox.memory_gb`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
 
 ## Running on Colab or Kaggle
 
@@ -196,7 +192,7 @@ python scripts/error_taxonomy.py                      # all runs under runs/
 python scripts/error_taxonomy.py runs/c1_* --out analysis/taxonomy
 ```
 
-- **Category per node:** working, generation_error, leakage, timeout, runtime_error (with a subtype from the last exception in stderr: import_error, missing_key_or_column, shape_mismatch, out_of_memory, ...), invalid_submission, pruned or abandoned.
+- **Category per node:** working, generation_error, leakage, timeout, runtime_error (with a subtype from the last exception in stderr: import_error, missing_key_or_column, shape_mismatch, out_of_memory, ...; a script killed without a timeout and without an exception is also out_of_memory), invalid_submission, pruned or abandoned.
 - **Labels on working nodes:**
   - `validation_overfitting`: beat its parent on validation but did worse on test (once role 1 grades nodes) or else probe.
   - `no_gain`: an improve that did not beat its parent.
