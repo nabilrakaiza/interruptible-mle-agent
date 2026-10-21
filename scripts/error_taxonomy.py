@@ -17,7 +17,11 @@ Each node gets one category:
 Working nodes can also carry labels, which need the whole tree:
 
     validation_overfitting  beat its parent on validation but did worse on the check
-                            score (test once graded, else probe)
+                            score (test once graded, else probe), by at least
+                            improve_min_rel_gain and in at least 95% of paired bootstrap
+                            resamples of the check rows when the run has the stand-in's
+                            labels (smaller or inconsistent drops are noise from a few
+                            hundred check rows, not overfitting)
     no_gain                 an improve that did not beat its parent by improve_min_rel_gain
     no_change               an improve whose predictions equal its parent's
     unused_data             the script never names one of the input files
@@ -37,14 +41,18 @@ import re
 from collections import Counter
 from pathlib import Path
 
+import numpy as np
 import pandas as pd
 import yaml
 
+from imle import stand_in_evaluation
 from imle.controller import KILLED_EXIT_CODES, beats, latest_complete_checkpoint
 from imle.controller import same_predictions as controller_same_predictions
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]
+BOOTSTRAP_SAMPLES = 1000
+CONSISTENT_SHARE = 0.95  # share of paired resamples a drop must hold in to count as overfitting
 
 # Exception class (last dotted part) -> runtime subtype.
 SUBTYPES = {
@@ -131,6 +139,51 @@ def same_predictions(run_dir: Path, a: str, b: str) -> bool:
     return controller_same_predictions(a_path, b_path)
 
 
+def paired_worse_share(tree: Tree, run_dir: Path, node_id: str, parent_id: str, split: str,
+                       samples: int = BOOTSTRAP_SAMPLES) -> float | None:
+    """Share of paired bootstrap resamples of the `split` rows on which the node scores worse than its parent.
+
+    Both nodes are scored on the same resampled rows each time, so what is left is the noise
+    in their difference. None when the run has no stand-in labels (role 3's A1 keeps them
+    elsewhere) or a node's predictions cannot be scored.
+    """
+    if not (run_dir / stand_in_evaluation.ROOT_DIR / "harness" / "labels.csv").exists():
+        return None
+    try:
+        (mine, meta), (theirs, _) = (stand_in_evaluation.labelled_predictions(run_dir / "nodes" / n)
+                                     for n in (node_id, parent_id))
+    except (ValueError, OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        return None
+    rows = np.flatnonzero((mine["split"] == split).to_numpy())
+    rng = np.random.default_rng(0)
+    results = []
+    for _ in range(samples):
+        pick = rng.choice(rows, len(rows))
+        try:
+            a = stand_in_evaluation.metric(mine.iloc[pick], meta)
+            b = stand_in_evaluation.metric(theirs.iloc[pick], meta)
+        except ValueError:  # e.g. AUC on a resample with one class
+            continue
+        results.append(worse(tree, a, b))
+    return float(np.mean(results)) if results else None
+
+
+def overfits(tree: Tree, run_dir: Path, node: Node, parent: Node, min_gain: float) -> bool:
+    """Whether the node beat its parent on validation but got clearly worse on the check score.
+
+    Clearly: by at least `min_gain` relative, and, when the run has the stand-in's labels, in
+    at least CONSISTENT_SHARE of paired bootstrap resamples of the check rows.
+    """
+    node_check, basis = check_score(node)
+    parent_check, parent_basis = check_score(parent)
+    if node_check is None or parent_check is None or basis != parent_basis:
+        return False
+    if not (worse(tree, parent.val_score, node.val_score) and beats(tree, parent_check, node_check, min_gain)):
+        return False
+    share = paired_worse_share(tree, run_dir, node.id, parent.id, basis)
+    return share is None or share >= CONSISTENT_SHARE
+
+
 def unused_inputs(run_dir: Path, script: str) -> list[str]:
     """Top-level input files or folders whose name never appears in the script (a text heuristic)."""
     input_dir = run_dir / "workspace" / "input"
@@ -174,10 +227,7 @@ def classify_run(run_dir: Path) -> tuple[list[dict], dict]:
                     labels.append("no_gain")
                 if same_predictions(run_dir, node.id, parent.id):
                     labels.append("no_change")
-            node_check, basis = check_score(node)
-            parent_check, parent_basis = check_score(parent)
-            if (node_check is not None and parent_check is not None and basis == parent_basis
-                    and worse(tree, parent.val_score, node.val_score) and worse(tree, node_check, parent_check)):
+            if overfits(tree, run_dir, node, parent, min_gain):
                 labels.append("validation_overfitting")
         script_path = run_dir / node.script_path if node.script_path else None
         missing = []

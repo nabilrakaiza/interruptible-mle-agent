@@ -2,9 +2,12 @@ import importlib.util
 import sys
 from pathlib import Path
 
+import numpy as np
+import pandas as pd
 import pytest
 
 from imle import checkpoint
+from imle import stand_in_evaluation as ev
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -125,3 +128,38 @@ def test_main_writes_the_tables(tmp_path: Path, monkeypatch, capsys):
     assert {p.name for p in out.iterdir()} == {"nodes.csv", "runs.csv", "summary.md"}
     printed = capsys.readouterr().out
     assert "1 runs, 9 nodes." in printed and "| missing_key_or_column | 1 |" in printed
+
+
+def test_overfitting_needs_a_clear_and_consistent_drop(tmp_path: Path):
+    """With the stand-in's labels, a probe drop from one bad row is noise; a drop on every row is overfitting."""
+    run_dir = tmp_path / "run"
+    harness = run_dir / "stand_in" / "harness"
+    harness.mkdir(parents=True)
+    (harness / "meta.json").write_text('{"task": "toy", "kind": "regression", "targets": ["y"], '
+                                       '"label_cols": ["y"], "id_dtype": "int64"}')
+    rng = np.random.default_rng(0)
+    y = rng.uniform(1, 3, 300)
+    pd.DataFrame({"id": range(300), "split": ["val"] * 100 + ["probe"] * 200, "y": y}).to_csv(
+        harness / "labels.csv", index=False)
+    parent = y * np.exp(rng.normal(0, 0.1, 300))
+    one_bad_row = parent.copy()
+    one_bad_row[150] *= 3
+    preds = {"n0": parent, "n1": one_bad_row, "n2": parent * 1.05}
+
+    tree = Tree(higher_is_better=False)
+    for nid, val in [("n0", 0.5), ("n1", 0.4), ("n2", 0.4)]:
+        out = run_dir / "nodes" / nid / "output"
+        out.mkdir(parents=True)
+        pd.DataFrame({"id": range(300), "y": preds[nid]}).to_csv(out / "predictions.csv", index=False)
+        joined, meta = ev.labelled_predictions(run_dir / "nodes" / nid)
+        probe = ev.metric(joined[joined.split == "probe"], meta)
+        tree.add(Node(id=nid, operator=D if nid == "n0" else IMP, parent_id=None if nid == "n0" else "n0",
+                      status=W, val_score=val, probe_score=probe))
+
+    n0, n1, n2 = (tree.nodes[n] for n in ("n0", "n1", "n2"))
+    assert n1.probe_score > n0.probe_score * 1.01 and n2.probe_score > n0.probe_score * 1.01  # both big enough
+    assert tax.paired_worse_share(tree, run_dir, "n1", "n0", "probe") < 0.95
+    assert tax.paired_worse_share(tree, run_dir, "n2", "n0", "probe") == 1.0
+    assert not tax.overfits(tree, run_dir, n1, n0, 0.01)
+    assert tax.overfits(tree, run_dir, n2, n0, 0.01)
+    assert not tax.overfits(tree, run_dir, n2, n0, 0.5)  # a drop smaller than the minimum gain is ignored

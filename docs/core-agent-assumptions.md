@@ -202,7 +202,7 @@ python scripts/error_taxonomy.py runs/c1_* --out analysis/taxonomy
 
 - **Category per node:** working, generation_error, leakage, timeout, runtime_error (with a subtype from the last exception in stderr: import_error, missing_key_or_column, shape_mismatch, out_of_memory, ...; a script killed without a timeout and without an exception is also out_of_memory), invalid_submission, pruned or abandoned.
 - **Labels on working nodes:**
-  - `validation_overfitting`: beat its parent on validation but did worse on test (once role 1 grades nodes) or else probe.
+  - `validation_overfitting`: beat its parent on validation but did clearly worse on test (once nodes are graded) or else probe. Clearly means by at least `improve_min_rel_gain`, and, when the run has the stand-in evaluator's labels, in at least 95% of paired bootstrap resamples of those rows. Without that check, most labels were noise: on the MiniMax nomad run (240 test rows) the plain rule flagged 9 nodes, and none of the 9 drops held up under the bootstrap (21 Oct).
   - `no_gain`: an improve that did not beat its parent.
   - `no_change`: an improve with the same predictions as its parent.
   - `unused_data`: an input file the script never names (a text heuristic).

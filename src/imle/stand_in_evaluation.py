@@ -349,7 +349,7 @@ def _check(pred: pd.DataFrame, labels: pd.DataFrame, meta: dict) -> pd.DataFrame
     return labels.merge(pred, on="id", how="left")
 
 
-def _metric(part: pd.DataFrame, meta: dict) -> float:
+def metric(part: pd.DataFrame, meta: dict) -> float:
     """The task's metric on some rows, computed as MLE-bench's grade.py computes it."""
     from sklearn.metrics import log_loss, roc_auc_score, root_mean_squared_log_error
 
@@ -378,21 +378,30 @@ def _submission(joined: pd.DataFrame, meta: dict, harness: Path) -> pd.DataFrame
     return pd.DataFrame({key: orig, **cols})
 
 
+def labelled_predictions(node_dir: Path) -> tuple[pd.DataFrame, dict]:
+    """A node's predictions joined to the labels, and the task's meta.
+
+    One row per held-out row, in labels.csv order, so two nodes' frames line up row by row.
+    Raises ValueError (or a pandas parsing error) for predictions MLE-bench would reject.
+    """
+    harness = node_dir.parent.parent / ROOT_DIR / "harness"
+    meta = json.loads((harness / "meta.json").read_text(encoding="utf-8"))
+    labels = pd.read_csv(harness / "labels.csv", dtype={"id": str} if not meta["id_dtype"].startswith("int") else None,
+                         keep_default_na=False, na_values=[""])
+    return _check(pd.read_csv(node_dir / "output" / "predictions.csv"), labels, meta), meta
+
+
 def score(node_dir: Path) -> SimpleNamespace:
     """Validation, probe and test scores of node_dir/output/predictions.csv; writes node_dir/submission.csv.
 
     Missing or malformed predictions come back as `error`, never as an exception.
     """
     harness = node_dir.parent.parent / ROOT_DIR / "harness"
-    meta = json.loads((harness / "meta.json").read_text(encoding="utf-8"))
-    labels = pd.read_csv(harness / "labels.csv", dtype={"id": str} if not meta["id_dtype"].startswith("int") else None,
-                         keep_default_na=False, na_values=[""])
-    path = node_dir / "output" / "predictions.csv"
-    if not path.exists():
+    if not (node_dir / "output" / "predictions.csv").exists():
         return _result(error="predictions.csv not found")
     try:
-        joined = _check(pd.read_csv(path), labels, meta)
-        scores = {s: _metric(joined[joined.split == s], meta) for s in ("val", "probe", "test")}
+        joined, meta = labelled_predictions(node_dir)
+        scores = {s: metric(joined[joined.split == s], meta) for s in ("val", "probe", "test")}
     except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as e:
         return _result(error=str(e)[:500])
     _submission(joined, meta, harness).to_csv(node_dir / "submission.csv", index=False)
