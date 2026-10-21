@@ -12,7 +12,8 @@ saved run folder:
                     labels from the error taxonomy, first use of each model card, every
                     intervention, the final pick and the node that should have been picked
 
-The "why it matters" commentary for the report is written by hand from these.
+The "why it matters" commentary for the report is written by hand from these, under
+"## Annotations" at the end of timeline.md; running the script again keeps that section.
 
     python scripts/trajectory.py runs/<run>                   # writes into runs/<run>/trajectory/
     python scripts/trajectory.py runs/<run> --all             # list every node, not only key events
@@ -252,9 +253,23 @@ def timeline_md(run: Run, evs: list[Event]) -> str:
         "|---|---|---|",
     ]
     lines += [f"| {e.node or ''} | {e.kind} | {e.note.replace('|', '/')} |" for e in evs]
-    lines += ["", "## Annotations", "", ("(Written by hand for the report: what this run shows, and what an "
-                                          "intervention did or could have done.)"), ""]
+    lines += ["", ANNOTATIONS, "", ANNOTATIONS_PLACEHOLDER, ""]
     return "\n".join(lines)
+
+
+ANNOTATIONS = "## Annotations"
+ANNOTATIONS_PLACEHOLDER = ("(Written by hand for the report: what this run shows, and what an "
+                           "intervention did or could have done.)")
+
+
+def keep_annotations(old: str, new: str) -> str:
+    """`new` with the hand-written Annotations section of `old`, so regenerating loses no notes."""
+    if ANNOTATIONS not in old or ANNOTATIONS not in new:
+        return new
+    written = old.split(ANNOTATIONS, 1)[1]
+    if written.strip() in ("", ANNOTATIONS_PLACEHOLDER):
+        return new
+    return new.split(ANNOTATIONS, 1)[0] + ANNOTATIONS + written
 
 
 def plot(run: Run, evs: list[Event], path: Path) -> None:
@@ -390,7 +405,9 @@ def main() -> None:
     evs = events(run, every_node=args.all)
     out = args.out or args.run / "trajectory"
     out.mkdir(parents=True, exist_ok=True)
-    (out / "timeline.md").write_text(timeline_md(run, evs))
+    path = out / "timeline.md"
+    old = path.read_text() if path.exists() else ""
+    path.write_text(keep_annotations(old, timeline_md(run, evs)))
     if not args.no_plot:
         plot(run, evs, out / "trajectory.png")
     print((out / "timeline.md").read_text())

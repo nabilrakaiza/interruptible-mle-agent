@@ -94,6 +94,21 @@ def test_timeline_and_figure_are_written(tmp_path: Path, monkeypatch, capsys):
     assert "## Annotations" in capsys.readouterr().out
 
 
+def test_regenerating_keeps_hand_written_annotations(tmp_path: Path, monkeypatch):
+    """Running the script again refreshes the events but keeps what was written under Annotations."""
+    make_run(tmp_path / "run")
+    monkeypatch.setattr(sys, "argv", ["trajectory.py", str(tmp_path / "run"), "--no-plot"])
+    traj.main()
+    path = tmp_path / "run" / "trajectory" / "timeline.md"
+    path.write_text(path.read_text().split("## Annotations")[0].replace("| n3 | final pick |", "| stale |")
+                    + "## Annotations\n\n- n1 helped because the card suggested an MLP.\n")
+    traj.main()
+    md = path.read_text()
+    assert "| n3 | final pick |" in md and "stale" not in md
+    assert md.endswith("## Annotations\n\n- n1 helped because the card suggested an MLP.\n")
+    assert traj.ANNOTATIONS_PLACEHOLDER not in md
+
+
 def test_pairs_compare_with_the_c1_twin(tmp_path: Path):
     """An intervened run is compared with the C1 run of the same task and seed on its final check score."""
     make_run(tmp_path / "runs" / "c4_run", condition="C4", final="n4")
