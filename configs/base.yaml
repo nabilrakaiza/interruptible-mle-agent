@@ -10,6 +10,7 @@ search:
   max_debug_depth: 3
   improve_patience: 3
   improve_min_rel_gain: 0.001
+  explore_prob: 0.15         # chance an improve goes to a random non-best node; 0 is plain AIDE greedy
 splits:
   probe_fraction: 0.1
 final_selection: best_val    # best_val | top_k | override

@@ -274,8 +274,13 @@ def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator,
 
     1. Draft until `num_drafts` drafts exist.
     2. With probability `debug_prob`, debug a random buggy leaf below `max_debug_depth`.
-    3. Otherwise improve the best working node that is not exhausted (see improve_failures).
+    3. Otherwise improve the best working node that is not exhausted (see improve_failures),
+       except that with probability `explore_prob` (default 0) a random other one is improved.
     4. With nothing to improve, debug if possible, else draft again.
+
+    Step 3's exploration keeps one lineage from taking the whole run: a 4-hour spooky
+    run spent 148 of 156 nodes below one draft, and the other drafts were never improved.
+    With explore_prob 0 no extra random number is drawn, so older runs replay unchanged.
 
     A pure function of the tree and the random state, so a prune or a resume needs
     no extra bookkeeping.
@@ -291,9 +296,12 @@ def select_next(tree: Tree, search: dict, rng: random.Random) -> tuple[Operator,
         return Operator.DEBUG, rng.choice(to_debug).id
 
     failures = improve_failures(tree, search)
-    for node in ranked(tree):
-        if failures[node.id] < search["improve_patience"]:
-            return Operator.IMPROVE, node.id
+    open_nodes = [n for n in ranked(tree) if failures[n.id] < search["improve_patience"]]
+    if open_nodes:
+        explore_prob = search.get("explore_prob", 0.0)
+        if len(open_nodes) > 1 and explore_prob > 0 and rng.random() < explore_prob:
+            return Operator.IMPROVE, rng.choice(open_nodes[1:]).id
+        return Operator.IMPROVE, open_nodes[0].id
 
     if to_debug:
         return Operator.DEBUG, rng.choice(to_debug).id

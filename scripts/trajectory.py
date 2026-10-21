@@ -137,6 +137,7 @@ def events(run: Run, every_node: bool = False) -> list[Event]:
         if n.status == NodeStatus.BUGGY:
             kind = row.get("category", "error")
             detail = row.get("exception") or (n.error or "").split("\n")[0]
+            detail = detail.removeprefix(f"{kind}: ")  # errors usually start with their category already
             notes.append(Event(n.id, "crash", f"{kind}: {short(detail, 140)}"))
         if n.operator == Operator.DEBUG and n.status == NodeStatus.WORKING:
             root, attempts = n, 0

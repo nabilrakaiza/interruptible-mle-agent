@@ -198,6 +198,30 @@ def test_select_drafts_first_then_improves_best():
     assert select_next(tree, SEARCH, FixedRandom(0.9)) == (Operator.IMPROVE, "n1")
 
 
+def test_explore_prob_sometimes_improves_another_node():
+    """With explore_prob, a low draw improves a random non-best open node; a high draw stays greedy."""
+    tree = Tree(higher_is_better=True)
+    for i, score in enumerate((0.5, 0.6, 0.7)):
+        tree.add(Node(id=f"n{i}", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=score))
+    search = {**SEARCH, "num_drafts": 3, "explore_prob": 0.15}
+    assert select_next(tree, search, FixedRandom(0.9)) == (Operator.IMPROVE, "n2")
+    assert select_next(tree, search, FixedRandom(0.1)) in {(Operator.IMPROVE, "n0"), (Operator.IMPROVE, "n1")}
+    rng = random.Random(0)  # every improve explores: each non-best node gets picked, the best never
+    picks = {select_next(tree, {**search, "explore_prob": 1.0}, rng)[1] for _ in range(50)}
+    assert picks == {"n0", "n1"}
+
+
+def test_explore_prob_zero_draws_no_random_number():
+    """Without exploration the random state is untouched, so runs from before explore_prob replay the same."""
+    tree = Tree(higher_is_better=True)
+    tree.add(Node(id="n0", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.5))
+    tree.add(Node(id="n1", operator=Operator.DRAFT, status=NodeStatus.WORKING, val_score=0.6))
+    rng = random.Random(0)
+    before = rng.getstate()
+    assert select_next(tree, {**SEARCH, "num_drafts": 2}, rng) == (Operator.IMPROVE, "n1")
+    assert rng.getstate() == before
+
+
 def test_select_skips_exhausted_nodes():
     """After improve_patience failed improvements a chain is skipped, its failed children too; with none left, draft."""
     tree = Tree(higher_is_better=True)

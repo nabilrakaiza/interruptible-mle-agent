@@ -72,6 +72,15 @@ def test_events_tell_the_story(tmp_path: Path):
     assert "val rank 2 of 4" in notes[("n4", "best on probe")]
 
 
+def test_crash_note_names_the_category_once(tmp_path: Path):
+    """A crash without a traceback shows its error once, not as 'runtime_error: runtime_error: ...'."""
+    make_run(tmp_path / "run")
+    (tmp_path / "run" / "nodes" / "n2" / "stderr.txt").write_text("")
+    evs = traj.events(traj.load(tmp_path / "run"))
+    crash = next(e for e in evs if e.kind == "crash")
+    assert crash.note == "runtime_error: exit code 1"
+
+
 def test_timeline_and_figure_are_written(tmp_path: Path, monkeypatch, capsys):
     """The command writes timeline.md and trajectory.png into the run's trajectory folder."""
     pytest.importorskip("matplotlib")

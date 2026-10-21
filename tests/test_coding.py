@@ -46,6 +46,33 @@ def test_with_output_dir_respects_future_imports():
     compile(out, "solution.py", "exec")
 
 
+def test_with_output_dir_disables_the_scripts_own_assignments(tmp_path: Path):
+    """A script that sets OUTPUT_DIR itself still writes where the controller says."""
+    script = (
+        'OUTPUT_DIR = "/kaggle/working"\n'
+        "import os\n"
+        'OUTPUT_DIR = os.environ.get(\n    "OUTPUT_DIR", ".")\n'
+        "if True:\n"
+        '    OUTPUT_DIR: str = "elsewhere"\n'
+        "def f():\n"
+        '    OUTPUT_DIR = "local"  # a function\'s own variable, left alone\n'
+        "    return OUTPUT_DIR\n"
+        'open(os.path.join(OUTPUT_DIR, "predictions.csv"), "w").write(f())\n'
+    )
+    out = coding.with_output_dir(script, str(tmp_path))
+    exec(compile(out, "solution.py", "exec"), {})  # noqa: S102 - our own test script
+    assert (tmp_path / "predictions.csv").read_text() == "local"
+    assert out.count("this line was:") == 3
+    assert out.splitlines()[1] == "pass  # OUTPUT_DIR is set by the controller; this line was: OUTPUT_DIR = \"/kaggle/working\""
+    assert len(out.splitlines()) == len(script.splitlines()) + 1  # line numbers in tracebacks shift by one only
+
+
+def test_with_output_dir_leaves_unparsable_scripts_alone():
+    """A script with a syntax error runs as written, so the error the model sees is its own."""
+    script = 'OUTPUT_DIR = "x"\ndef broken(:\n'
+    assert coding.with_output_dir(script, "/output") == "OUTPUT_DIR = '/output'  # set by the controller\n" + script
+
+
 def test_draft_prompt_shows_data_contract_and_memory(ctx: Ctx):
     """The draft prompt carries the data preview, output contract, metric, timeout, memory and past plans."""
     findings = [{"id": "f1", "text": "char n-grams help", "evidence": [{"node_id": "n3", "val_score": 0.41}]}]

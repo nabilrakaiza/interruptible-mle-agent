@@ -10,6 +10,7 @@ docs/core-agent-assumptions.md.
 
 from __future__ import annotations
 
+import ast
 import re
 from collections.abc import Sequence
 from pathlib import Path
@@ -105,8 +106,54 @@ def tail(text: str, n: int = TAIL_CHARS) -> str:
     return text if len(text) <= n else "[... earlier output cut ...]\n" + text[-n:]
 
 
+def _module_level_output_dir_assignments(script: str) -> list[ast.stmt]:
+    """Assignments to OUTPUT_DIR outside any function or class, which would override the controller's."""
+    try:
+        tree = ast.parse(script)
+    except SyntaxError:  # the run will fail on it anyway, with the real error
+        return []
+    found: list[ast.stmt] = []
+    todo: list[ast.AST] = [tree]
+    while todo:
+        node = todo.pop()
+        for child in ast.iter_child_nodes(node):
+            if isinstance(child, ast.FunctionDef | ast.AsyncFunctionDef | ast.ClassDef | ast.Lambda):
+                continue
+            if isinstance(child, ast.Assign | ast.AnnAssign):
+                targets = child.targets if isinstance(child, ast.Assign) else [child.target]
+                if any(isinstance(t, ast.Name) and t.id == "OUTPUT_DIR" for t in targets):
+                    found.append(child)
+                    continue
+            todo.append(child)
+    return found
+
+
+def drop_output_dir_assignments(script: str) -> str:
+    """The script with its own module-level `OUTPUT_DIR = ...` lines disabled.
+
+    The prompt says OUTPUT_DIR is set for the script, but some models still assign it
+    (to "/kaggle/working", say), which sends the predictions elsewhere. Each such
+    statement becomes `pass` plus its original text as a comment, so line numbers and
+    blocks stay intact. A statement sharing its line with another is left alone.
+    """
+    lines = script.splitlines(keepends=True)
+    for stmt in _module_level_output_dir_assignments(script):
+        first = lines[stmt.lineno - 1]
+        indent = first[: len(first) - len(first.lstrip())]
+        if stmt.col_offset != len(indent) or ";" in first:
+            continue
+        for i in range(stmt.lineno - 1, stmt.end_lineno):
+            ending = "\n" if lines[i].endswith("\n") else ""
+            lines[i] = f"{indent}# {lines[i].strip()}{ending}"
+        lines[stmt.lineno - 1] = f"{indent}pass  # OUTPUT_DIR is set by the controller; this line was: {first.strip()}\n"
+    return "".join(lines)
+
+
 def with_output_dir(script: str, output_path: str) -> str:
-    """The script as executed: OUTPUT_DIR defined first, after any `from __future__` imports."""
+    """The script as executed: OUTPUT_DIR defined first, after any `from __future__` imports,
+    and the script's own assignments to it disabled.
+    """
+    script = drop_output_dir_assignments(script)
     line = f"OUTPUT_DIR = {output_path!r}  # set by the controller\n"
     futures = list(_FUTURE_IMPORT.finditer(script))
     if not futures:

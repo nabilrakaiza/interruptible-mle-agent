@@ -36,7 +36,7 @@ def run_script(script_path, task_dir, timeout_s=3600, image="python:3.11-slim",
 
 **What it does:** runs one script in a fresh Docker container with no network, the task folder mounted read-only at `/workspace` and the output folder writable at `/output`, and kills it after `timeout_s`.
 
-`imle/execution.py` wraps it as `DockerSandbox`. The task folder is the run's `workspace/` and the output folder is the node's `output/`. Each script gets `OUTPUT_DIR = "/output"` as its first line. `SubprocessSandbox` does the same without Docker, for local testing only; choose it with `sandbox.backend: subprocess` or `--sandbox subprocess`.
+`imle/execution.py` wraps it as `DockerSandbox`. The task folder is the run's `workspace/` and the output folder is the node's `output/`. Each script gets `OUTPUT_DIR = "/output"` as its first line. Any module-level `OUTPUT_DIR = ...` the model wrote itself is turned into `pass` plus a comment, since MiniMax-M3.1-Flash set it to `/kaggle/working` or `os.environ.get(...)` in all 9 of its test scripts despite the prompt. `nodes/<id>/solution.py` keeps the model's text unchanged. `SubprocessSandbox` does the same without Docker, for local testing only; choose it with `sandbox.backend: subprocess` or `--sandbox subprocess`.
 
 Tested against her branch in a test merge: everything works, and the only conflict is a trivial one in `.gitignore`. I could not run Docker on my machine.
 
@@ -165,7 +165,7 @@ Stated here because they affect how runs are read.
 - **Selection:** the AIDE-style greedy policy, with the values in `configs/base.yaml`.
   - Draft until there are `num_drafts` drafts, counting failed and pruned ones.
   - Then, with probability `debug_prob`, debug a random buggy leaf. A chain of debug attempts stops at `max_debug_depth`.
-  - Otherwise improve the best working node.
+  - Otherwise improve the best working node. With probability `explore_prob` (0.15) improve a random other working node that is not exhausted instead. Added 21 Oct: a 4-hour C1 spooky run on Gemini put 148 of 156 nodes below one draft, and the other four drafts were never improved. This makes C1 "AIDE greedy with ε-exploration", not pure AIDE; `explore_prob: 0` restores pure greedy, and runs from before the key replay unchanged.
   - A node stops being improved once `improve_patience` of its improve children have failed to beat it by `improve_min_rel_gain`, relative to its score. A buggy improve child counts as a failure.
   - The count is per improve chain, not per node. An improve that does not beat its parent by the threshold (worse, buggy, or better by only a little) stays in its parent's chain, and every node in a chain shares its count. A run of tiny gains (0.12738, 0.12736, ...) therefore ends after `improve_patience` steps, and the whole chain is then skipped. An improve that beats its parent by the threshold starts a new chain. Before this, each such node was the new best and started at zero. A 200-node test run spent 198 nodes micro-tuning blend weights on one lineage this way.
   - With nothing to improve, debug if possible, else draft again. The search therefore ends only on budget or node cap.
