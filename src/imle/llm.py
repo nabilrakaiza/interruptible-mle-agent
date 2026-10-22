@@ -3,7 +3,7 @@
 Providers, chosen by `llm.provider` in the config:
 
     openrouter  (default) any OpenRouter model, through its OpenAI-compatible API.
-                Needs OPENROUTER_API_KEY. Default model xiaomi/mimo-v2.6-flash.
+                Needs OPENROUTER_API_KEY. Default model deepseek/deepseek-v4-flash-0731.
     gemini      Gemini through Google's OpenAI-compatible endpoint, for cheap local
                 testing. Needs GEMINI_API_KEY. Default model gemini-3.5-flash-lite.
 
@@ -51,12 +51,13 @@ OPENAI_COMPATIBLE = {
     },
 }
 DEFAULT_MODELS = {
-    "openrouter": "xiaomi/mimo-v2.6-flash",
+    "openrouter": "deepseek/deepseek-v4-flash-0731",
     "gemini": "gemini-3.5-flash-lite",
 }
 
 # USD per million input and output tokens, used when the provider does not report a cost.
 PRICES = {
+    "deepseek/deepseek-v4-flash-0731": (0.044, 0.133),  # Baidu, the cheapest fp8 provider on 22 Oct
     "xiaomi/mimo-v2.6-flash": (0.14, 0.28),
 }
 

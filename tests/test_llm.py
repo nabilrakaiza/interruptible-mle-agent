@@ -22,7 +22,7 @@ class FakeOpenRouter:
         if cost is not None:
             usage.cost = cost
         response = SimpleNamespace(
-            model="xiaomi/mimo-v2.6-flash",
+            model="deepseek/deepseek-v4-flash-0731",
             provider="DeepInfra",
             choices=[SimpleNamespace(message=SimpleNamespace(content=content), finish_reason="stop")],
             usage=usage,
@@ -49,13 +49,13 @@ def test_openrouter_request_and_log(tmp_path: Path, monkeypatch):
     assert llm(agent="coding", system="sys", user="hello") == REPLY
 
     sent = client.calls[0]
-    assert sent["model"] == "xiaomi/mimo-v2.6-flash"
+    assert sent["model"] == "deepseek/deepseek-v4-flash-0731"
     assert sent["messages"] == [{"role": "system", "content": "sys"}, {"role": "user", "content": "hello"}]
     assert sent["temperature"] == 0.7 and sent["seed"] == 3
     assert sent["extra_body"] == {"reasoning": {"effort": "high"}}
 
     record = read_log(tmp_path / "run1")
-    assert record["agent"] == "coding" and record["model"] == "xiaomi/mimo-v2.6-flash"
+    assert record["agent"] == "coding" and record["model"] == "deepseek/deepseek-v4-flash-0731"
     assert record["input_tokens"] == 1000 and record["output_tokens"] == 500
     assert record["cost_usd"] == 0.0005
     assert record["sampling_params"]["finish_reason"] == "stop"
@@ -66,7 +66,7 @@ def test_openrouter_empty_reply_and_computed_cost(tmp_path: Path, monkeypatch):
     monkeypatch.setattr(llm_module, "log_llm_call", None)
     llm = OpenAICompatibleLLM(None, tmp_path / "r", effort=None, client=FakeOpenRouter(content=None, cost=None))
     assert llm(agent="coding", system="s", user="u") == ""
-    assert read_log(tmp_path / "r")["cost_usd"] == pytest.approx(0.00028)
+    assert read_log(tmp_path / "r")["cost_usd"] == pytest.approx(0.000111)
     assert "extra_body" not in llm.request_args("s", "u")
 
 
@@ -116,7 +116,7 @@ def test_routing_is_sent_to_openrouter_and_the_serving_host_logged(tmp_path: Pat
 def test_make_llm_follows_the_config(tmp_path: Path):
     """The provider and its settings come from the llm section; OpenRouter is the default."""
     llm = make_llm({"llm": {"model": "", "temperature": 0.2, "effort": "low"}}, tmp_path, 1)
-    assert isinstance(llm, OpenAICompatibleLLM) and llm.model == "xiaomi/mimo-v2.6-flash" and llm.temperature == 0.2
+    assert isinstance(llm, OpenAICompatibleLLM) and llm.model == "deepseek/deepseek-v4-flash-0731" and llm.temperature == 0.2
     assert make_llm({"llm": {"provider": "gemini"}}, tmp_path, 1).provider == "gemini"
     with pytest.raises(ValueError):
         make_llm({"llm": {"provider": "nope"}}, tmp_path, 1)

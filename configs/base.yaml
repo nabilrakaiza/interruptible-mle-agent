@@ -1,6 +1,6 @@
 # Shared defaults. Condition files override these.
 budget:
-  wall_clock_s: 14400        # 4 hours
+  wall_clock_s: 7200         # 2 hours; extend a finished run with --resume --budget-hours
   script_timeout_s: 3600
   max_nodes: 200
 search:
@@ -31,6 +31,8 @@ llm:
   max_tokens: 64000
   routing:                   # OpenRouter provider routing, sent as its `provider` object (openrouter only)
     sort: price              # each call goes to the cheapest available provider, then the next cheapest
+    quantizations: [fp8]     # one precision for every call, so all conditions see the same weights
+    max_price: {prompt: 0.15, completion: 0.30}  # USD per million tokens; above it calls fail, not cost more
   outage_retries: 5          # failed LLM calls in a row before the run stops (resumable with --resume)
   outage_wait_s: 30          # wait after a failed call, doubling each time, at most 5 minutes
 sandbox:
