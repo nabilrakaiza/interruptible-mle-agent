@@ -23,6 +23,7 @@ class FakeOpenRouter:
             usage.cost = cost
         response = SimpleNamespace(
             model="xiaomi/mimo-v2.6-flash",
+            provider="DeepInfra",
             choices=[SimpleNamespace(message=SimpleNamespace(content=content), finish_reason="stop")],
             usage=usage,
         )
@@ -94,6 +95,22 @@ def test_gemini_sends_reasoning_effort_and_needs_its_key(tmp_path: Path, monkeyp
     monkeypatch.delenv("GEMINI_API_KEY", raising=False)
     with pytest.raises(RuntimeError, match="GEMINI_API_KEY"):
         llm.client()
+
+
+def test_routing_is_sent_to_openrouter_and_the_serving_host_logged(tmp_path: Path, monkeypatch):
+    """`llm.routing` goes out as OpenRouter's provider object next to reasoning, and the host that served is logged."""
+    monkeypatch.setattr(llm_module, "log_llm_call", None)
+    client = FakeOpenRouter()
+    cfg = {"llm": {"routing": {"sort": "price", "quantizations": ["fp8"]}}}
+    llm = make_llm(cfg, tmp_path / "run1", 0)
+    llm._client = client
+    llm(agent="coding", system="sys", user="hello")
+    assert client.calls[0]["extra_body"] == {"reasoning": {"effort": "high"},
+                                             "provider": {"sort": "price", "quantizations": ["fp8"]}}
+    assert read_log(tmp_path / "run1")["sampling_params"]["served_by"] == "DeepInfra"
+
+    gemini = make_llm({"llm": {"provider": "gemini", **cfg["llm"]}}, tmp_path / "run2", 0)
+    assert "extra_body" not in gemini.request_args("sys", "hello")
 
 
 def test_make_llm_follows_the_config(tmp_path: Path):

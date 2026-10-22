@@ -29,6 +29,8 @@ llm:
   temperature: 0.7
   effort: high               # reasoning depth: low | medium | high
   max_tokens: 64000
+  routing:                   # OpenRouter provider routing, sent as its `provider` object (openrouter only)
+    sort: price              # each call goes to the cheapest available provider, then the next cheapest
   outage_retries: 5          # failed LLM calls in a row before the run stops (resumable with --resume)
   outage_wait_s: 30          # wait after a failed call, doubling each time, at most 5 minutes
 sandbox:

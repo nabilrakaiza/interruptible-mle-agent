@@ -68,6 +68,7 @@ The team's choice (18 Oct) is Xiaomi MiMo-V2.6-Flash through OpenRouter:
 - **Model:** from `LLM_MODEL`, defaulting to `xiaomi/mimo-v2.6-flash` when that is unset. OpenRouter lists it at $0.14 per million input tokens and $0.28 per million output tokens, with a 131k output limit.
 - **Sampling:** `llm.temperature` (0.7) and the run seed are sent. `llm.effort` (default `high`) is sent as OpenRouter's reasoning effort. The reasoning text is not logged, only the answer.
 - **Cost:** `cost_usd` uses the cost OpenRouter reports, falling back to the listed price.
+- **Provider routing (22 Oct):** `llm.routing` is sent as OpenRouter's `provider` object. The default `{sort: price}` sends each call to the cheapest provider that is up, falling back to the next cheapest. Provider prices change without notice, and providers of one model can serve different quantizations (fp4, fp8), so add `quantizations: [fp8]` (or one other) once the model is fixed, so every condition sees the same weights. The provider that served each call is logged as `sampling_params.served_by`.
 - **Errors and retries:** the SDK retries transient errors 5 times, with a 15-minute timeout per call. An error that still escapes ends the run, which can then be resumed with `--resume`.
 
 `llm.provider: gemini` is for cheap local testing: `GEMINI_API_KEY`, default `gemini-3.5-flash-lite`, through Google's OpenAI-compatible endpoint. `scripts/smoke_run.py` runs the full agent on a toy task built from scikit-learn's bundled breast cancer data, with no Kaggle data, Docker or role 3 evaluator needed. Run `python scripts/smoke_run.py --dry-run` (canned replies, no key) or `--provider gemini`.
@@ -188,7 +189,7 @@ Stated here because they affect how runs are read.
   - After `llm.outage_retries` (5) failures in a row, the run writes a checkpoint with `stop_reason: llm_unavailable` and `done: false` and exits. `--resume` continues it.
   - A2 does not fall back to the hand-written cards during an outage; it runs again on the next draft. A failed A4 call leaves the findings unchanged until the next node.
 - **Improve prompt memory:** an improve sees the changes already tried on that node (plan and outcome). An attempt whose predictions file is identical to the node's own is shown as "no effect", so the model knows the change never reached the predictions. This compares prediction files, never probe scores: the probe split stays hidden from the agent. It also sees up to 12 recent approaches from other branches with their validation scores, so switching to one of them is not mistaken for a new idea.
-- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `sandbox.backend` / `sandbox.image` / `sandbox.cpus` / `sandbox.memory_gb`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
+- **Config keys added to `configs/base.yaml`:** `top_k`, `llm.effort`, `llm.max_tokens`, `llm.routing`, `sandbox.backend` / `sandbox.image` / `sandbox.cpus` / `sandbox.memory_gb`, `llm.outage_retries` / `llm.outage_wait_s` and the `retrieval` section.
 
 ## Running on Colab or Kaggle
 

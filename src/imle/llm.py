@@ -33,18 +33,21 @@ except ImportError:  # role 1's logger not merged yet
 # Providers reached through the OpenAI-compatible chat completions API. `effort_as` says how
 # reasoning effort is sent: OpenRouter's `reasoning` object, or the standard `reasoning_effort`.
 # `sends_seed` is False where the API rejects the field (Gemini answers 400 "Unknown name seed").
+# `routes` is True where `llm.routing` is sent, as OpenRouter's `provider` routing object.
 OPENAI_COMPATIBLE = {
     "openrouter": {
         "base_url": "https://openrouter.ai/api/v1",
         "key_env": "OPENROUTER_API_KEY",
         "effort_as": "reasoning",
         "sends_seed": True,
+        "routes": True,
     },
     "gemini": {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "key_env": "GEMINI_API_KEY",
         "effort_as": "reasoning_effort",
         "sends_seed": False,
+        "routes": False,
     },
 }
 DEFAULT_MODELS = {
@@ -110,10 +113,12 @@ class OpenAICompatibleLLM:
         effort: str | None = "high",
         max_tokens: int = 64000,
         seed: int | None = None,
+        routing: dict[str, Any] | None = None,
         client: Any = None,
     ) -> None:
         """`provider` is a key of OPENAI_COMPATIBLE. `effort` (low, medium or high) sets reasoning depth;
-        None leaves the model's default.
+        None leaves the model's default. `routing` is OpenRouter's provider routing object, e.g.
+        {"sort": "price"}; it is ignored by providers that do not route.
         """
         self.provider = provider
         self.settings = OPENAI_COMPATIBLE[provider]
@@ -123,6 +128,7 @@ class OpenAICompatibleLLM:
         self.effort = effort
         self.max_tokens = max_tokens
         self.seed = seed
+        self.routing = routing
         self._client = client
 
     def client(self) -> Any:
@@ -147,11 +153,16 @@ class OpenAICompatibleLLM:
             args["temperature"] = self.temperature
         if self.seed is not None and self.settings["sends_seed"]:
             args["seed"] = self.seed
+        extra: dict[str, Any] = {}
         if self.effort in ("low", "medium", "high"):
             if self.settings["effort_as"] == "reasoning":
-                args["extra_body"] = {"reasoning": {"effort": self.effort}}
+                extra["reasoning"] = {"effort": self.effort}
             else:
                 args["reasoning_effort"] = self.effort
+        if self.routing and self.settings["routes"]:
+            extra["provider"] = self.routing
+        if extra:
+            args["extra_body"] = extra
         return args
 
     def __call__(self, *, agent: str, system: str, user: str) -> str:
@@ -182,6 +193,7 @@ class OpenAICompatibleLLM:
         cost = float(reported) if reported is not None else cost_usd(self.model, input_tokens, output_tokens)
         sampling = {k: v for k, v in args.items() if k not in ("model", "messages")}
         sampling["finish_reason"] = choice.finish_reason
+        sampling["served_by"] = getattr(response, "provider", None)  # OpenRouter names the upstream host
         write_log(self.run_dir, self.seed, agent, system, user, text, response.model or self.model,
                   input_tokens, output_tokens, latency_s, sampling, cost)
         return text
@@ -201,4 +213,5 @@ def make_llm(cfg: dict, run_dir: Path, seed: int | None) -> OpenAICompatibleLLM:
         effort=llm_cfg.get("effort", "high"),
         max_tokens=int(llm_cfg.get("max_tokens", 64000)),
         seed=seed,
+        routing=llm_cfg.get("routing"),
     )
