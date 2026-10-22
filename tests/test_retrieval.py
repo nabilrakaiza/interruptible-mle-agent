@@ -287,6 +287,22 @@ def test_clean_text_drops_formulas_and_doctests():
         "Real text."]
 
 
+def test_clean_text_drops_progress_bars_and_printed_output():
+    """Download progress bars and paragraphs too long to be prose never become passages."""
+    bar = "0%| | 0.00/170M [00:00<?, ?B/s] 1%| | 1.6M/170M [00:01<01:40, 1.7MB/s]"
+    assert clean_text(f"{bar}\n\n{'x ' * 3000}\n\nTrain a small network.") == "Train a small network."
+
+
+def test_torch_cards_pass_but_torchvision_cards_are_dropped():
+    """The sandbox has CPU torch but not torchvision, so only the second card is dropped."""
+    sources = {"S1": TEXT_PAGE}
+    items = [card(name="Small CNN", modality="image", recipe="torch.nn Conv2d blocks trained with Adam."),
+             card(name="Augmented CNN", modality="image", recipe="Use torchvision transforms for flips.")]
+    cards, dropped = parse_cards(json.dumps(items), sources, ["image"], 8)
+    assert [c["name"] for c in cards] == ["Small CNN"]
+    assert dropped[0]["reason"] == "needs a package the sandbox lacks: torchvision"
+
+
 def test_llm_outage_is_not_a_fallback(tmp_path: Path):
     """During an LLM outage A2 raises instead of falling back, and saves nothing, so it runs again later."""
     def down(**kwargs):

@@ -18,7 +18,7 @@ from typing import Any, Protocol
 
 # Packages the prompt tells the model it may import. Must match the sandbox image.
 PACKAGES = ("numpy, pandas, scipy, scikit-learn, pillow, torch (CPU only: there is no GPU, and no internet, "
-            "so no pretrained weights can be downloaded)")
+            "so no pretrained weights can be downloaded; torchvision is not installed)")
 
 # Defaults for the limits stated in the prompt; the controller passes sandbox.cpus and sandbox.memory_gb.
 CPUS = 2
