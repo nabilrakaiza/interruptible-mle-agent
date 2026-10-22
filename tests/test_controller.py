@@ -1,6 +1,8 @@
 import json
 import random
+import sys
 import time
+import types
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -14,6 +16,7 @@ from imle.controller import (
     improve_failures,
     latest_complete_checkpoint,
     load_config,
+    load_policies,
     machine_info,
     select_next,
 )
@@ -618,6 +621,44 @@ def test_raise_budget_continues_a_finished_run(tmp_path: Path):
     full = Controller.resume(c.run_dir, llm=ScriptedLLM(), sandbox=FakeSandbox(), evaluator=FakeEvaluator())
     with pytest.raises(ValueError, match="max_nodes"):
         full.raise_budget(7200)
+
+
+def test_policies_queue_interventions_at_each_safe_point(tmp_path: Path, capsys):
+    """A scripted monitor sees each checkpoint and its prune applies at that safe point; a failing one is skipped."""
+    seen = []
+
+    def prune_first_draft(run_dir: Path, ck: dict) -> list[dict]:
+        """Prune n0 as soon as it exists, once."""
+        seen.append(ck["step"])
+        nodes = ck["tree"]["nodes"]
+        if "n0" in nodes and nodes["n0"]["status"] == "working":
+            return [{"action": "prune", "target": "n0", "note": "test rule"}]
+        return []
+
+    def broken(run_dir: Path, ck: dict) -> list[dict]:
+        """A policy with a bug."""
+        raise KeyError("oops")
+
+    c = make_controller(tmp_path, make_cfg(budget={"max_nodes": 3}),
+                        policies={"prune_first_draft": prune_first_draft, "broken": broken})
+    tree = c.run()
+    assert seen == sorted(seen) and len(seen) >= 3  # once per safe point, in order
+    assert tree.nodes["n0"].status.value == "pruned"
+    records = [json.loads(line) for line in (c.run_dir / "applied.jsonl").read_text().splitlines()]
+    assert records[0]["outcome"] == "applied"
+    assert records[0]["intervention"]["source"] == "prune_first_draft"
+    assert records[0]["intervention"]["id"].startswith("prune_first_draft-s")
+    assert "warning: policy broken failed" in capsys.readouterr().out
+
+
+def test_load_policies_refuses_a_missing_policy(monkeypatch):
+    """A condition naming a policy without `decide` does not run as a silent C1; human is the dashboard's job."""
+    monkeypatch.setitem(sys.modules, "imle.policies.fake_rule", types.SimpleNamespace(decide=lambda run_dir, ck: []))
+    monkeypatch.setitem(sys.modules, "imle.policies.empty_rule", types.SimpleNamespace())
+    assert list(load_policies({"monitors": ["human", "fake_rule"]})) == ["fake_rule"]
+    assert load_policies({}) == {}
+    with pytest.raises(SystemExit, match="empty_rule.decide is not implemented"):
+        load_policies({"monitors": ["empty_rule"]})
 
 
 def test_prompts_state_the_configured_limits(tmp_path: Path):

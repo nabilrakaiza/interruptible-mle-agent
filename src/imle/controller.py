@@ -16,6 +16,7 @@ assumed for the parts owned by other roles are in docs/core-agent-assumptions.md
 from __future__ import annotations
 
 import argparse
+import importlib
 import json
 import os
 import platform
@@ -32,10 +33,11 @@ import yaml
 from dotenv import load_dotenv
 from pydantic import BaseModel
 
-from imle import checkpoint
+from imle import checkpoint, intervention
 from imle.agents import coding, retrieval
 from imle.agents.coding import LLM, CodingError, LLMUnavailable, TaskContext
 from imle.apply import apply_pending
+from imle.intervention import Intervention
 from imle.state import SearchState
 from imle.tree import Node, NodeStatus, Operator, Tree
 
@@ -99,6 +101,18 @@ class Retrieve(Protocol):
 
     def __call__(self, llm: LLM, task: str, ctx: TaskContext, run_dir: Path) -> list[dict]:
         """Return the model cards for the run, and save them with an audit report to run_dir/model_cards.json."""
+        ...
+
+
+class Policy(Protocol):
+    """A scripted monitor, policies/<name>.py `decide`: C4's divergence_prune (role 4), C5's finding_correction (role 3)."""
+
+    def __call__(self, run_dir: Path, ck: dict) -> list[dict]:
+        """Interventions to queue after the checkpoint `ck` ({"step", "tree", "findings", "status"}), possibly none.
+
+        Each is a dict with `action` and, as the action needs, `target`, `params` and `note`
+        (docs/intervention-protocol.md). The controller adds `id`, `ts` and `source`.
+        """
         ...
 
 
@@ -372,8 +386,12 @@ class Controller:
         evaluator: Evaluator,
         reflect: Reflect | None = None,
         retrieve: Retrieve | None = None,
+        policies: dict[str, Policy] | None = None,
     ) -> None:
-        """Store the run settings and dependencies, and start the budget clock."""
+        """Store the run settings and dependencies, and start the budget clock.
+
+        `policies` are the condition's scripted monitors by name; see run_policies().
+        """
         self.cfg = cfg
         self.task = task
         self.seed = seed
@@ -383,6 +401,7 @@ class Controller:
         self.evaluator = evaluator
         self.reflect = reflect
         self.retrieve = retrieve
+        self.policies = policies or {}
         self._cards: list[dict] | None = None
         self.tree = Tree()
         self.findings: list[dict] = []
@@ -400,7 +419,7 @@ class Controller:
         """Rebuild a controller from the latest complete checkpoint of `run_dir`.
 
         `deps` are the same keyword arguments as the constructor (llm, sandbox, evaluator,
-        reflect, retrieve). Time between the crash and the resume is not charged to the budget.
+        reflect, retrieve, policies). Time between the crash and the resume is not charged to the budget.
         """
         run_dir = Path(run_dir)
         ck = latest_complete_checkpoint(run_dir)
@@ -794,11 +813,36 @@ class Controller:
         self.state.step += 1
 
     def safe_point(self, current_node: str | None) -> None:
-        """Checkpoint, then apply queued interventions, then checkpoint again if any was applied."""
+        """Checkpoint, let the scripted monitors queue interventions, apply the queue, and checkpoint again if any applied."""
         self.write_checkpoint(current_node)
+        self.run_policies()
         records = apply_pending(self.run_dir, self.tree, self.findings, self.state)
         if any(r.outcome == "applied" for r in records):
             self.write_checkpoint(current_node)
+
+    def run_policies(self) -> None:
+        """Ask each scripted monitor about the checkpoint just written, and append what it decides to queue.jsonl.
+
+        Called at every safe point, in the controller's process, so a policy sees exactly
+        one checkpoint per node and its interventions apply at the same safe point however
+        fast the machine is: a C4 run is as reproducible as a C1 run. The interventions
+        still go through queue.jsonl and apply_pending, the same path as the dashboard's.
+        A policy that raises is reported and skipped; the run goes on.
+        """
+        if not self.policies:
+            return
+        ck = checkpoint.read(self.run_dir)
+        for name, decide in self.policies.items():
+            try:
+                decided = decide(self.run_dir, ck)
+                items = [Intervention.model_validate({**d, "id": f"{name}-s{ck['step']}-{i}", "ts": _now(),
+                                                      "source": name})
+                         for i, d in enumerate(decided)]
+            except Exception as e:  # noqa: BLE001 - a policy bug must not end the run
+                print(f"warning: policy {name} failed at step {ck['step']}: {type(e).__name__}: {e}")
+                continue
+            for item in items:
+                intervention.append(self.run_dir / "queue.jsonl", item)
 
     def choose_final(self) -> tuple[list[Node], str]:
         """The node(s) to submit, and how they were chosen.
@@ -850,6 +894,26 @@ class Controller:
             final_nodes=[n.id for n in chosen],
             submitted=bool(submitted),
         )
+
+
+def load_policies(cfg: dict) -> dict[str, Policy]:
+    """The `decide` function of each scripted monitor in the config's `monitors`, by name.
+
+    "human" is skipped: people use the dashboard, which writes to queue.jsonl itself. A
+    listed policy without `decide` stops the run before it starts, since a C4 or C5 run
+    without its policy would silently be a C1 run.
+    """
+    policies = {}
+    for name in cfg.get("monitors") or []:
+        if name == "human":
+            continue
+        module = importlib.import_module(f"imle.policies.{name}")
+        decide = getattr(module, "decide", None)
+        if decide is None:
+            raise SystemExit(f"imle.policies.{name}.decide is not implemented yet, so this condition cannot run. "
+                             "Expected signature: docs/core-agent-assumptions.md")
+        policies[name] = decide
+    return policies
 
 
 def main() -> None:
@@ -908,6 +972,8 @@ def main() -> None:
     if reflect is None and (cfg.get("agents") or {}).get("reflection", True):
         print("warning: imle.agents.reflection.reflect is not implemented yet; running without findings")
 
+    policies = load_policies(cfg)
+
     rcfg = cfg.get("retrieval") or {}
     retrieve = None
     if rcfg.get("source", "static") == "web":
@@ -920,6 +986,7 @@ def main() -> None:
         "evaluator": evaluation,
         "reflect": reflect,
         "retrieve": retrieve,
+        "policies": policies,
     }
     if args.resume:
         controller = Controller.resume(run_dir, **deps)
