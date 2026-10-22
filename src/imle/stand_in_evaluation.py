@@ -66,6 +66,7 @@ class Task:
     higher_is_better: bool
     prediction_format: str
     files_note: str            # appended to the competition description
+    label_name: str = ""       # the target's column name in the agent's train.csv, as in the original data
 
 
 TASKS = {
@@ -74,6 +75,7 @@ TASKS = {
         prediction_format="Columns id,EAP,HPL,MWS: one row per row of predict.csv, with the predicted probability "
                           "of each author. Each row's probabilities must sum to 1.",
         files_note="train.csv has columns id, text and author (EAP, HPL or MWS). predict.csv has id and text.",
+        label_name="author",
     ),
     "detecting-insults-in-social-commentary": Task(
         kind="binary", targets=["Insult"], metric="AUC", higher_is_better=True,
@@ -81,6 +83,7 @@ TASKS = {
                           "probability (between 0 and 1) that the comment is insulting.",
         files_note="train.csv has columns id, Date, Comment and Insult (1 if insulting). predict.csv has id, "
                    "Date and Comment. Date is often empty.",
+        label_name="Insult",
     ),
     "random-acts-of-pizza": Task(
         kind="binary", targets=["requester_received_pizza"], metric="AUC", higher_is_better=True,
@@ -91,6 +94,7 @@ TASKS = {
                    "a JSON list. Fields only known later (the *_at_retrieval fields, requester_user_flair, "
                    "post_was_edited, request_text) are removed, because the test set does not have them. "
                    "train.csv also has requester_received_pizza (1 or 0).",
+        label_name="requester_received_pizza",
     ),
     "nomad2018-predict-transparent-conductors": Task(
         kind="regression", targets=["formation_energy_ev_natom", "bandgap_energy_ev"],
@@ -107,6 +111,7 @@ TASKS = {
                           "probability (between 0 and 1) that the image contains a cactus.",
         files_note="train.csv has columns id and has_cactus; predict.csv has id. Each id is an image file name "
                    "in images/ (32x32 colour JPEGs).",
+        label_name="has_cactus",
     ),
     "leaf-classification": Task(
         kind="multiclass", targets=[], metric="multi-class log loss", higher_is_better=False,
@@ -115,6 +120,7 @@ TASKS = {
                           "Each row's probabilities must sum to 1.",
         files_note="train.csv has id, species and the 192 precomputed features (margin, shape, texture); "
                    "predict.csv has id and the features. images/<id>.jpg is the leaf's binary image.",
+        label_name="species",
     ),
 }
 
@@ -284,7 +290,10 @@ def prepare(task: str, run_dir: Path, seed: int) -> SimpleNamespace:
     harness.mkdir(parents=True)
 
     features = [c for c in train.columns if c not in label_cols and c != "split"]
-    train[train.split == "train"][features + label_cols].to_csv(inputs / "train.csv", index=False)
+    # Internally the target is `label`; the agent sees it under its original name, as the description says.
+    train_out = train[train.split == "train"][features + label_cols]
+    train_out.rename(columns={"label": spec.label_name} if spec.label_name else {}).to_csv(
+        inputs / "train.csv", index=False)
     holdout = train[train.split != "train"]
     test = test.copy().assign(split="test", position=range(len(test)))  # copy: de-fragment after inserts
     predict = pd.concat([holdout[features], test[features]], ignore_index=True)

@@ -94,7 +94,7 @@ def test_spooky_splits_scores_and_submission(data: Path, tmp_path: Path):
     assert ctx.metric == "multi-class log loss" and not ctx.higher_is_better
     assert "# Files for this run" in ctx.description and "EAP" in ctx.prediction_format
     train, predict = pd.read_csv(ctx.input_dir / "train.csv"), pd.read_csv(ctx.input_dir / "predict.csv")
-    assert list(train.columns) == ["id", "text", "label"] and list(predict.columns) == ["id", "text"]
+    assert list(train.columns) == ["id", "text", "author"] and list(predict.columns) == ["id", "text"]
     lab = labels(run)
     assert set(lab["split"]) == {"val", "probe", "test"}
     assert len(train) + (lab.split != "test").sum() == 60 and (lab.split == "test").sum() == 9
@@ -190,3 +190,12 @@ def test_unknown_task_and_missing_data(tmp_path: Path, monkeypatch):
         ev.prepare("titanic", tmp_path / "run", seed=0)
     with pytest.raises(FileNotFoundError, match="mlebench prepare -c"):
         ev.prepare(SPOOKY, tmp_path / "run", seed=0)
+
+
+def test_target_column_is_named_as_the_task_note_says():
+    """Each classification task's train.csv keeps its original target name, which the note given to A3 uses."""
+    for name, task in ev.TASKS.items():
+        if task.kind == "regression":
+            assert task.label_name == "", name  # regression targets keep their own names already
+        else:
+            assert task.label_name and task.label_name in task.files_note, name
