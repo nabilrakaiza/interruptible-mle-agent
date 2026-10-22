@@ -74,6 +74,7 @@ The team's choice (18 Oct) is Xiaomi MiMo-V2.6-Flash through OpenRouter:
 
 - `test_score` stays empty. Each scored node keeps its test submission at `nodes/<node_id>/submission.csv`, so grading can happen after the run.
 - **Resume:** `python -m imle.controller --resume runs/<run_id>` continues a crashed run from its last complete checkpoint. The node that was running is moved to `nodes/_unfinished/`. Time between the crash and the resume is not charged to the budget.
+- **Extend:** `python -m imle.controller --resume runs/<run_id> --budget-hours H` gives a run, finished or not, a total budget of H hours and continues it. The tree, random state and findings carry on, so a 2-hour run extended to 4 searches as a 4-hour run would, except that scripts started just before the first stop had shorter time limits. The final node is chosen again at the end, and `machine.jsonl` records the extension. On a new run, `--budget-hours` replaces `budget.wall_clock_s`.
 - **Scripted monitors:** the controller does not start the scripted monitors for C4 and C5 (`monitors:` in the config). It only reads `queue.jsonl`, so the launcher has to start each policy as its own process.
 
 ## Role 3: evaluator (`agents/evaluation.py`, assumed: nothing pushed yet)

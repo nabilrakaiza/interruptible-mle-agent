@@ -63,7 +63,8 @@ python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
 - **Start, resume or skip:**
   - no complete checkpoint: start;
   - unfinished: `--resume`;
-  - finished: nothing to do.
+  - finished: nothing to do, unless `--budget-hours` asks for more time than the run had (below).
+- **Budget and extending (22 Oct):** `--budget-hours H` sets a new run's total budget instead of `budget.wall_clock_s`. Given again for a finished run with less, it continues that run from its last checkpoint until the run has H hours in total, and picks the final node again. It never extends twice, so a retried command is safe. Extend both runs of a C1/C4 pair, never one alone, and keep the monitor running during the extension.
 - **Restore on a fresh machine:** if the local folder has no checkpoint, it is copied back from `--sync-to` or `--restore-from` first.
 - **Syncing:** while the run goes, the folder is copied to `--sync-to` every `--sync-every` seconds (default 120), only files that changed. A checkpoint copied half-written is harmless, because resume skips incomplete checkpoints.
 - **Retries:** if the run exits with an error, such as a long LLM outage, it waits `--retry-wait` seconds (default 600) and resumes, up to `--retries` times (default 2).

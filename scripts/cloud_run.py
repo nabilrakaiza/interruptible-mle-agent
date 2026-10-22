@@ -4,7 +4,8 @@ One command does the right thing however many times it is called:
 
     - If the run folder has no checkpoint yet, the run starts.
     - If it has one, the run resumes from it (the controller's --resume).
-    - If the run already finished, nothing runs.
+    - If the run already finished, nothing runs, unless --budget-hours asks for more time
+      than it had: then it continues with the larger budget.
 
 While the run goes, the run folder is copied to `--sync-to` every `--sync-every`
 seconds and once more at the end. On a fresh machine, a run that exists only in
@@ -58,12 +59,20 @@ def run_name(args: argparse.Namespace) -> str:
     return f"{condition}_{args.task}_seed{args.seed}"
 
 
-def state(run_dir: Path) -> str:
-    """"start" (no checkpoint yet), "resume" (unfinished) or "done"."""
+def state(run_dir: Path, budget_hours: float | None = None) -> str:
+    """"start" (no checkpoint yet), "resume" (unfinished, or finished with less than `budget_hours`) or "done"."""
     ck = latest_complete_checkpoint(run_dir) if run_dir.exists() else None
     if ck is None:
         return "start"
-    return "done" if ck["status"].get("done") else "resume"
+    if not ck["status"].get("done"):
+        return "resume"
+    return "resume" if budget_hours and budget_s(run_dir, ck["status"]) < budget_hours * 3600 else "done"
+
+
+def budget_s(run_dir: Path, status: dict) -> float:
+    """A run's total wall-clock budget: its config's budget.wall_clock_s plus time added since."""
+    cfg = yaml.safe_load((run_dir / "config.yaml").read_text()) or {}
+    return cfg["budget"]["wall_clock_s"] + (status.get("search") or {}).get("extra_budget_s", 0.0)
 
 
 def sync(src: Path, dst: Path) -> int:
@@ -114,6 +123,7 @@ def command(args: argparse.Namespace, run_dir: Path, how: str) -> list[str]:
         cmd += ["--dry-run"] if args.dry_run else ["--provider", args.provider or "gemini"]
         return cmd
     cmd = [sys.executable, "-m", "imle.controller", "--sandbox", args.sandbox]
+    cmd += ["--budget-hours", str(args.budget_hours)] if args.budget_hours else []
     if how == "resume":
         return [*cmd, "--resume", str(run_dir)]
     cmd += ["--config", args.config, "--task", args.task, "--seed", str(args.seed), "--run-dir", str(run_dir)]
@@ -128,8 +138,9 @@ def launch(args: argparse.Namespace) -> int:
     if source := restore(run_dir, sources):
         print(f"restored {run_dir.name} from {source}")
 
+    budget_hours = None if args.smoke else args.budget_hours
     for attempt in range(args.retries + 1):
-        how = state(run_dir)
+        how = state(run_dir, budget_hours)
         if how == "done":
             print(f"{run_dir.name} has finished; nothing to run")
             break
@@ -149,7 +160,7 @@ def launch(args: argparse.Namespace) -> int:
         if attempt < args.retries:
             print(f"exited with code {process.returncode}; resuming in {args.retry_wait:.0f}s", flush=True)
             time.sleep(args.retry_wait)
-    final = state(run_dir)
+    final = state(run_dir, budget_hours)
     print(f"{run_dir.name}: {final}")
     return 0 if final == "done" else 1
 
@@ -160,6 +171,8 @@ def main() -> None:
     parser.add_argument("--config", help="condition file (not needed with --smoke)")
     parser.add_argument("--task", help="MLE-bench competition ID (not needed with --smoke)")
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--budget-hours", type=float,
+                        help="total wall-clock budget; a finished run with less is continued up to it")
     parser.add_argument("--provider", choices=["openrouter", "gemini"], help="override llm.provider for a new run")
     parser.add_argument("--evaluator", choices=["a1", "stand_in"],
                         help="stand_in: the temporary MLE-bench evaluator, until role 3's A1 exists")

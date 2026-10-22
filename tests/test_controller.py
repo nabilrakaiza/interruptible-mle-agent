@@ -599,6 +599,27 @@ def test_machine_is_recorded_on_start_and_resume(tmp_path: Path, monkeypatch):
     assert records[0]["platform"] == "kaggle" and records[1]["step"] > 0
 
 
+def test_raise_budget_continues_a_finished_run(tmp_path: Path):
+    """A run that ran out of time continues from its checkpoint with more budget, once, and re-picks its final node."""
+    c = make_controller(tmp_path, make_cfg(budget={"wall_clock_s": 0, "max_nodes": 3}))
+    c.run()
+    assert c.done and checkpoint.read(c.run_dir)["status"]["stop_reason"] == "budget" and not c.tree.nodes
+
+    resumed = Controller.resume(c.run_dir, llm=ScriptedLLM(), sandbox=FakeSandbox(), evaluator=FakeEvaluator())
+    assert resumed.raise_budget(3600) and not resumed.done
+    assert not resumed.raise_budget(3600) and resumed.state.extra_budget_s == 3600  # asking again adds nothing
+    tree = resumed.run()
+    status = checkpoint.read(c.run_dir)["status"]
+    assert len(tree.nodes) == 3 and status["done"] and status["stop_reason"] == "max_nodes"
+    assert status["final_node"] in tree.nodes
+    events = [json.loads(line)["event"] for line in (c.run_dir / "machine.jsonl").read_text().splitlines()]
+    assert events == ["start", "extend", "resume"]
+
+    full = Controller.resume(c.run_dir, llm=ScriptedLLM(), sandbox=FakeSandbox(), evaluator=FakeEvaluator())
+    with pytest.raises(ValueError, match="max_nodes"):
+        full.raise_budget(7200)
+
+
 def test_prompts_state_the_configured_limits(tmp_path: Path):
     """Every operator's prompt states sandbox.cpus and sandbox.memory_gb from the config."""
     sandbox = FakeSandbox([Exec(exit_code=1, stderr="boom")])

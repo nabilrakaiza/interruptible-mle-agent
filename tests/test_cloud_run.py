@@ -20,7 +20,7 @@ def args(**overrides) -> Namespace:
     base = {
         "config": str(ROOT / "configs" / "conditions" / "c1_autonomous.yaml"), "task": "spooky-author-identification",
         "seed": 3, "provider": None, "evaluator": None, "sandbox": "subprocess", "name": None, "smoke": False, "dry_run": False,
-        "nodes": 6, "minutes": 10.0,
+        "nodes": 6, "minutes": 10.0, "budget_hours": None,
     }
     return Namespace(**{**base, **overrides})
 
@@ -45,6 +45,22 @@ def test_name_state_and_command(tmp_path: Path):
     assert cloud.command(a, run_dir, "resume")[-2:] == ["--resume", str(run_dir)]
     checkpointed(run_dir, done=True)
     assert cloud.state(run_dir) == "done"
+
+
+def test_budget_hours_continues_a_finished_run_once(tmp_path: Path):
+    """A finished run with less budget than --budget-hours is resumed; once it has that much, it is done."""
+    run_dir = tmp_path / "run"
+    (run_dir).mkdir()
+    (run_dir / "config.yaml").write_text("budget: {wall_clock_s: 7200}\n")
+    checkpoint.write(run_dir, 0, {"nodes": {}, "higher_is_better": True}, [],
+                     {"done": True, "search": {"extra_budget_s": 0.0}})
+    assert cloud.state(run_dir) == "done" and cloud.state(run_dir, 2) == "done"
+    assert cloud.state(run_dir, 4) == "resume"
+    cmd = cloud.command(args(budget_hours=4.0), run_dir, "resume")
+    assert cmd[-4:] == ["--budget-hours", "4.0", "--resume", str(run_dir)]
+    checkpoint.write(run_dir, 1, {"nodes": {}, "higher_is_better": True}, [],
+                     {"done": True, "search": {"extra_budget_s": 7200.0}})
+    assert cloud.state(run_dir, 4) == "done"  # a retried command does not extend it again
 
 
 def test_sync_copies_only_changes(tmp_path: Path):

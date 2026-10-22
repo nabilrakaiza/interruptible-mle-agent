@@ -448,6 +448,30 @@ class Controller:
         """Timeout for the next script: the configured limit or the remaining budget, whichever is smaller."""
         return max(1.0, min(self.cfg["budget"]["script_timeout_s"], self.remaining_s()))
 
+    def budget_s(self) -> float:
+        """The run's total wall-clock budget: budget.wall_clock_s plus any time added since."""
+        return self.cfg["budget"]["wall_clock_s"] + self.state.extra_budget_s
+
+    def raise_budget(self, total_s: float) -> bool:
+        """Raise the total budget to `total_s` seconds, reopening a finished run so run() continues it.
+
+        Returns False and changes nothing when the budget is already at least `total_s`, so a
+        retried command never extends a run twice. The tree, random state and findings carry
+        on, so a 2-hour run raised to 4 hours searches as a 4-hour run would, except that
+        scripts started just before the first stop had shorter time limits. The final
+        selection is made again when the extended run ends.
+        """
+        added = total_s - self.budget_s()
+        if added <= 0:
+            return False
+        if len(self.tree.nodes) >= self.cfg["budget"]["max_nodes"]:
+            raise ValueError(f"the run already has budget.max_nodes ({self.cfg['budget']['max_nodes']}) nodes, "
+                             "so more time would add none")
+        self.state.extra_budget_s += added
+        self.done = False
+        self.record_machine("extend", budget_s=total_s)
+        return True
+
     def stop_reason(self) -> str | None:
         """Why the search must stop now ("budget" or "max_nodes"), or None to keep going."""
         if self.remaining_s() <= 0:
@@ -501,10 +525,10 @@ class Controller:
         self.finalize(reason)
         return self.tree
 
-    def record_machine(self, event: str) -> None:
+    def record_machine(self, event: str, **extra: Any) -> None:
         """Append where this start or resume runs to machine.jsonl (a resume may land on another machine)."""
         self.run_dir.mkdir(parents=True, exist_ok=True)
-        record = {"timestamp": _now(), "event": event, "step": self.state.step, **machine_info()}
+        record = {"timestamp": _now(), "event": event, "step": self.state.step, **extra, **machine_info()}
         with (self.run_dir / "machine.jsonl").open("a", encoding="utf-8") as f:
             f.write(json.dumps(record) + "\n")
 
@@ -836,6 +860,9 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--run-dir", help="default: runs/<condition>_<task>_seed<seed>_<utc time>")
     parser.add_argument("--resume", metavar="RUN_DIR", help="continue a run from its latest checkpoint")
+    parser.add_argument("--budget-hours", type=float,
+                        help="total wall-clock budget. A new run uses it instead of budget.wall_clock_s; with "
+                             "--resume, a run with less is given more and continued, even if it had finished")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override sandbox.backend")
     parser.add_argument("--evaluator", choices=["a1", "stand_in"],
                         help="a1: role 3's agents/evaluation.py (default); stand_in: imle/stand_in_evaluation.py, "
@@ -854,6 +881,8 @@ def main() -> None:
         if not (args.config and args.task):
             parser.error("--config and --task are required unless --resume is given")
         cfg = load_config(Path(args.config))
+        if args.budget_hours:
+            cfg["budget"]["wall_clock_s"] = args.budget_hours * 3600
         if args.provider:
             cfg.setdefault("llm", {})["provider"] = args.provider
         if args.evaluator:
@@ -894,6 +923,8 @@ def main() -> None:
     }
     if args.resume:
         controller = Controller.resume(run_dir, **deps)
+        if args.budget_hours and controller.raise_budget(args.budget_hours * 3600):
+            print(f"budget raised to {args.budget_hours:g} h; continuing from step {controller.state.step}")
     else:
         controller = Controller(cfg, args.task, seed, run_dir, **deps)
     try:
