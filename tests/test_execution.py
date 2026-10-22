@@ -36,6 +36,15 @@ def test_subprocess_sandbox_runs_and_times_out(tmp_path: Path):
     assert slow.timed_out and slow.exit_code == -1
 
 
+def test_subprocess_sandbox_caps_threads_at_the_configured_cpus(tmp_path: Path):
+    """With cpus set, numpy, joblib and torch see that many threads, as in the Docker sandbox; a GPU is never visible."""
+    (tmp_path / "env.py").write_text("import os\nprint(os.environ.get('OMP_NUM_THREADS'), os.environ.get('LOKY_MAX_CPU_COUNT'), "
+                                     "repr(os.environ.get('CUDA_VISIBLE_DEVICES')))\n")
+    assert SubprocessSandbox(2).run(tmp_path / "env.py", tmp_path, tmp_path, 10).stdout == "2 2 ''\n"
+    assert SubprocessSandbox().run(tmp_path / "env.py", tmp_path, tmp_path, 10).stdout.endswith("''\n")
+    assert make_sandbox({"sandbox": {"backend": "subprocess", "cpus": 3}}).cpus == 3
+
+
 def test_make_sandbox():
     """The backend comes from the argument, then the config, then defaults to Docker."""
     assert isinstance(make_sandbox({}), DockerSandbox)

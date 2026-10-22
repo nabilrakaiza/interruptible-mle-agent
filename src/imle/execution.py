@@ -13,6 +13,7 @@ machines without Docker and for tests.
 from __future__ import annotations
 
 import math
+import os
 import subprocess
 import sys
 import time
@@ -59,8 +60,21 @@ class DockerSandbox:
         )
 
 
+# Variables that cap the threads numpy, scikit-learn (joblib) and torch use.
+THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS",
+               "NUMEXPR_NUM_THREADS", "LOKY_MAX_CPU_COUNT")
+
+
 class SubprocessSandbox:
     """A local process with this Python interpreter. No isolation; for local testing only."""
+
+    def __init__(self, cpus: int | None = None) -> None:
+        """`cpus` caps the threads the script's libraries use, like Docker's CPU limit; None leaves them uncapped.
+
+        Without a cap, a script on an 8-core laptop uses all 8 cores while A3's prompt says
+        `sandbox.cpus`, so local runs would be faster than Docker runs of the same condition.
+        """
+        self.cpus = cpus
 
     def output_path(self, output_dir: Path) -> str:
         """Where the script sees `output_dir`: its absolute path on this machine."""
@@ -70,9 +84,14 @@ class SubprocessSandbox:
         """Run the script with `workspace` as working directory, and kill it after `timeout_s`."""
         start = time.monotonic()
         try:
+            # No GPU, as in the Docker sandbox: Colab and Kaggle machines may have one, and torch would use it.
+            env = {**os.environ, "CUDA_VISIBLE_DEVICES": ""}
+            if self.cpus is not None:
+                env.update({v: str(self.cpus) for v in THREAD_VARS})
             p = subprocess.run(
                 [sys.executable, script_path.name],
                 cwd=workspace,
+                env=env,
                 capture_output=True,
                 text=True,
                 timeout=timeout_s,
@@ -97,5 +116,5 @@ def make_sandbox(cfg: dict, backend: str | None = None) -> DockerSandbox | Subpr
     if backend == "docker":
         return DockerSandbox(settings.get("image", DEFAULT_IMAGE))
     if backend == "subprocess":
-        return SubprocessSandbox()
+        return SubprocessSandbox(settings.get("cpus"))
     raise ValueError(f"unknown sandbox backend {backend!r}")
