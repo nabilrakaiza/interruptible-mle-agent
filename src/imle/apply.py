@@ -1,8 +1,8 @@
 """Applying queued interventions at a safe point.
 
-A stand-in written by role 2 so the controller honours interventions now. The
-behaviour belongs to role 4 (docs/plan.md): rewrite it freely, and keep
-`apply_pending`'s signature or tell role 2 the new one.
+Owned by role 4 (docs/plan.md). Written first as role 2's stand-in, and kept as
+role 4's implementation after review; `apply_pending`'s signature is what the
+controller calls.
 
 Rules, from docs/intervention-protocol.md: drain the queue in timestamp order,
 validate each action against the current state, drop it when the target is

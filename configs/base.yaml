@@ -15,6 +15,13 @@ splits:
   probe_fraction: 0.1
 final_selection: best_val    # best_val | top_k | override
 top_k: 3                     # submissions kept when final_selection is top_k
+policies:                    # thresholds of the scripted monitors a condition names in `monitors`
+  divergence_prune:          # C4, see imle/policies/divergence_prune.py
+    min_steps: 2             # working nodes after the lineage's best-probe node
+    min_val_gain: 0.01       # relative validation gain since that node
+    min_probe_loss: 0.01     # relative probe loss since that node
+    consistent_share: 0.95   # paired bootstrap resamples the probe loss must hold in
+    bootstrap_samples: 1000
 agents:
   evaluation: true
   retrieval: true

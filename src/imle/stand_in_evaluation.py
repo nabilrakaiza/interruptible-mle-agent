@@ -400,6 +400,34 @@ def labelled_predictions(node_dir: Path) -> tuple[pd.DataFrame, dict]:
     return _check(pd.read_csv(node_dir / "output" / "predictions.csv"), labels, meta), meta
 
 
+def paired_worse_share(run_dir: Path, node_id: str, other_id: str, split: str, higher_is_better: bool,
+                       samples: int = 1000) -> float | None:
+    """Share of paired bootstrap resamples of the `split` rows on which `node_id` scores worse than `other_id`.
+
+    Both nodes are scored on the same resampled rows each time, so what is left is the noise
+    in their difference. None when the run has no stand-in labels (role 3's A1 keeps them
+    elsewhere) or a node's predictions cannot be scored. Seeded, so the same inputs always
+    give the same share.
+    """
+    if not (run_dir / ROOT_DIR / "harness" / "labels.csv").exists():
+        return None
+    try:
+        (mine, meta), (theirs, _) = (labelled_predictions(run_dir / "nodes" / n) for n in (node_id, other_id))
+    except (ValueError, OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        return None
+    rows = np.flatnonzero((mine["split"] == split).to_numpy())
+    rng = np.random.default_rng(0)
+    results = []
+    for _ in range(samples):
+        pick = rng.choice(rows, len(rows))
+        try:
+            a, b = metric(mine.iloc[pick], meta), metric(theirs.iloc[pick], meta)
+        except ValueError:  # e.g. AUC on a resample with one class
+            continue
+        results.append(a < b if higher_is_better else a > b)
+    return float(np.mean(results)) if results else None
+
+
 def score(node_dir: Path) -> SimpleNamespace:
     """Validation, probe and test scores of node_dir/output/predictions.csv; writes node_dir/submission.csv.
 

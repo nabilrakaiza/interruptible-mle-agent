@@ -101,3 +101,13 @@ def test_malformed_queue_does_not_crash(tmp_path: Path):
     """A bad line in queue.jsonl is reported and skipped instead of stopping the run."""
     (tmp_path / "queue.jsonl").write_text("{not json\n")
     assert apply_pending(tmp_path, make_tree(), [], SearchState()) == []
+
+
+def test_malformed_line_does_not_block_later_items(tmp_path: Path, capsys):
+    """Items after a bad line or an unknown action are still applied."""
+    (tmp_path / "queue.jsonl").write_text('{not json\n{"id": "x", "ts": "t", "source": "human", "action": "explode"}\n')
+    queue(tmp_path, (Action.REBUDGET, None, {"seconds": 5}))
+    state = SearchState()
+    records = apply_pending(tmp_path, make_tree(), [], state)
+    assert outcomes(records) == [("applied", None)] and state.extra_budget_s == 5
+    assert capsys.readouterr().out.count("skipped") == 2

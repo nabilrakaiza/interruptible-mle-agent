@@ -143,29 +143,9 @@ def paired_worse_share(tree: Tree, run_dir: Path, node_id: str, parent_id: str, 
                        samples: int = BOOTSTRAP_SAMPLES) -> float | None:
     """Share of paired bootstrap resamples of the `split` rows on which the node scores worse than its parent.
 
-    Both nodes are scored on the same resampled rows each time, so what is left is the noise
-    in their difference. None when the run has no stand-in labels (role 3's A1 keeps them
-    elsewhere) or a node's predictions cannot be scored.
+    See stand_in_evaluation.paired_worse_share; None when the run has no stand-in labels.
     """
-    if not (run_dir / stand_in_evaluation.ROOT_DIR / "harness" / "labels.csv").exists():
-        return None
-    try:
-        (mine, meta), (theirs, _) = (stand_in_evaluation.labelled_predictions(run_dir / "nodes" / n)
-                                     for n in (node_id, parent_id))
-    except (ValueError, OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
-        return None
-    rows = np.flatnonzero((mine["split"] == split).to_numpy())
-    rng = np.random.default_rng(0)
-    results = []
-    for _ in range(samples):
-        pick = rng.choice(rows, len(rows))
-        try:
-            a = stand_in_evaluation.metric(mine.iloc[pick], meta)
-            b = stand_in_evaluation.metric(theirs.iloc[pick], meta)
-        except ValueError:  # e.g. AUC on a resample with one class
-            continue
-        results.append(worse(tree, a, b))
-    return float(np.mean(results)) if results else None
+    return stand_in_evaluation.paired_worse_share(run_dir, node_id, parent_id, split, tree.higher_is_better, samples)
 
 
 def overfits(tree: Tree, run_dir: Path, node: Node, parent: Node, min_gain: float) -> bool:
