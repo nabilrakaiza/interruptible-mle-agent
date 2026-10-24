@@ -54,7 +54,7 @@ Details: [`docs/architecture.md`](docs/architecture.md) and [`docs/intervention-
 configs/              base settings and one file per experimental condition
 dashboard/            Streamlit monitor (reads checkpoint, writes queue)
 docs/                 architecture, protocol, experiment plan, proposal
-scripts/              data preparation and run launchers
+scripts/              data preparation, run launchers, grading and analysis
 src/imle/
   agents/             A1 evaluation, A2 retrieval, A3 coding, A4 reflection
   policies/           scripted intervention policies (C4, C5)
@@ -62,6 +62,8 @@ src/imle/
   tree.py             node and search-tree data model
   intervention.py     intervention schema and queue
   checkpoint.py       atomic checkpoint read/write
+  apply.py            applies queued interventions at a safe point
+  monitor.py          read-only views of a run for the dashboard and reports
   sandbox.py          isolated script execution
   llm_log.py          prompt, completion, and cost logging
 tests/
@@ -69,7 +71,6 @@ tests/
 
 ## Setup
 
-> Setup will be finalised after the pilot run. Current plan:
 
 ```bash
 git clone https://github.com/nabilrakaiza/interruptible-mle-agent.git
@@ -80,13 +81,41 @@ cp .env.example .env        # then fill in your keys
 bash scripts/prepare_data.sh
 ```
 
-MLE-bench data preparation needs Kaggle API credentials and acceptance of each competition's rules on Kaggle.
+MLE-bench data preparation needs Kaggle API credentials and acceptance of each competition's rules on Kaggle. Install MLE-bench in its own virtual environment, not the agent's, and set `MLEBENCH_PYTHON` in `.env` to its interpreter (used for grading).
 
-Running (planned):
+The sandbox image, needed for `sandbox.backend: docker` (the default):
 
 ```bash
-python -m imle.controller --config configs/conditions/c1_autonomous.yaml --task spooky-author-identification --seed 0
+docker build -t imle-sandbox:latest .
+```
+
+On a Mac without Docker Desktop, `brew install colima docker`, then `colima start --cpus 2 --memory 5`.
+
+Running:
+
+```bash
+# one run (starts, or resumes if it was cut off)
+python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
+    --task spooky-author-identification --seed 0 --evaluator stand_in --sandbox docker
+
+# the experiment grid (configs/schedule.yaml), split over N machines; run again to resume
+python scripts/launch_grid.py --status
+python scripts/launch_grid.py --shard 0/3
+
+# watch and intervene
 streamlit run dashboard/app.py
+```
+
+Analysis, from saved run folders only:
+
+```bash
+python scripts/grade.py runs/grid               # MLE-bench grades into each run's grade.json
+python scripts/outcomes.py runs/grid            # valid / above-median / medal rates with CIs, C2 and C3 post hoc
+python scripts/cost_report.py runs/grid --project configs/schedule.yaml
+python scripts/interaction_cost.py runs/grid    # interventions, timing, human time
+python scripts/replay_policy.py runs/grid       # where C4's rule would have pruned in other runs
+python scripts/error_taxonomy.py runs/grid
+python scripts/trajectory.py runs/grid/<run>
 ```
 
 ## Experimental conditions

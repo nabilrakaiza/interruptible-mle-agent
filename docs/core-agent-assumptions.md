@@ -26,11 +26,11 @@ runs/<run_id>/
   submission.csv           the final submission (final/submission_<rank>.csv too for top_k)
 ```
 
-## Role 1: sandbox (built on Medhini's `imle.sandbox.run_script`, branch `medhini-infrastructure`)
+## Role 1: sandbox (built: Medhini's `imle.sandbox.run_script`, finished on branch `roles-1-4`)
 
 ```python
-def run_script(script_path, task_dir, timeout_s=3600, image="python:3.11-slim",
-               harness_dir=None, output_dir=None) -> SandboxResult
+def run_script(script_path, task_dir, timeout_s=3600, image="imle-sandbox:latest", harness_dir=None,
+               output_dir=None, cpus=2, memory_gb=4, tmp_gb=1) -> SandboxResult
 # SandboxResult has: stdout, stderr, exit_code, wall_time_s, timed_out
 ```
 
@@ -38,18 +38,15 @@ def run_script(script_path, task_dir, timeout_s=3600, image="python:3.11-slim",
 
 `imle/execution.py` wraps it as `DockerSandbox`. The task folder is the run's `workspace/` and the output folder is the node's `output/`. Each script gets `OUTPUT_DIR = "/output"` as its first line. Any module-level `OUTPUT_DIR = ...` the model wrote itself is turned into `pass` plus a comment, since MiniMax-M3.1-Flash set it to `/kaggle/working` or `os.environ.get(...)` in all 9 of its test scripts despite the prompt. `nodes/<id>/solution.py` keeps the model's text unchanged. `SubprocessSandbox` does the same without Docker, for local testing only; choose it with `sandbox.backend: subprocess` or `--sandbox subprocess`.
 
-Tested against her branch in a test merge: everything works, and the only conflict is a trivial one in `.gitignore`. I could not run Docker on my machine.
+Medhini's branch (13 and 20 Oct) was merged into `roles-1-4` on 24 Oct, and the requests role 2 had sent her were done there:
 
-Still assumed:
+- **Image.** `Dockerfile` and `docker-requirements.txt` pin Python 3.13.6, numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1 and pillow 12.3.0, plus torch 2.14.1 from PyTorch's CPU-only index (the default Linux wheel pulls in about 2 GB of CUDA libraries). Build it with `docker build -t imle-sandbox:latest .`; `.dockerignore` keeps `runs/` and `data/` out of the build. The prompt tells the model it may use exactly these packages (`PACKAGES` in `agents/coding.py`): change both together.
 
-- **A Docker image with the packages.** `python:3.11-slim` has no numpy, pandas or scikit-learn, and the container has no network, so every script would fail on import. The controller uses `sandbox.image` (default `imle-sandbox:latest`). Her branch now has a Dockerfile with the packages; on 20 Oct role 2 asked role 1 to pin Python (3.13.6) and the packages in `docker-requirements.txt` to the versions role 2 tests with (numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1, pillow 12.3.0), and to set thread and cache variables for the locked-down container.
-
-  The prompt tells the model it may use exactly these packages (`PACKAGES` in `agents/coding.py`). Tell role 2 if lightgbm or xgboost are added.
-
-  **torch (22 Oct).** Added to `PACKAGES` as CPU only, with no pretrained weights (no network). Without it the image tasks measured the sandbox more than the agent: the MiniMax cactus pilot plateaued with scikit-learn 0.0002 below the median. The image needs the CPU build (`pip install torch --index-url https://download.pytorch.org/whl/cpu`; the default Linux wheel pulls in about 2 GB of CUDA libraries), pinned to the version role 2 tests with (2.14.1).
-- **Limits.** The prompt states `sandbox.cpus` (2) and `sandbox.memory_gb` (4) from `configs/base.yaml`. `run_script` currently fixes 2 CPUs, 2 GB and a 128 MB `/tmp`; role 2 asked role 1 to read these keys, raise memory to 4 GB and `/tmp` to 1 GB, and set `--memory-swap` equal to `--memory`, so a script over the limit is killed at once (exit code 137) instead of swapping. The subprocess sandbox enforces no memory limit, but since 22 Oct it caps the threads numpy, scikit-learn and torch use at `sandbox.cpus` (OMP, BLAS and joblib variables), and it hides any GPU (`CUDA_VISIBLE_DEVICES` empty), since Colab and Kaggle machines may have one. Before that, local pilot runs could use every core of the laptop while the prompt said 2; a random forest with `n_jobs=-1` ran 2.5 times faster uncapped on an 8-core Mac.
+  **torch (22 Oct).** Added to `PACKAGES` as CPU only, with no pretrained weights (no network). Without it the image tasks measured the sandbox more than the agent: the MiniMax cactus pilot plateaued with scikit-learn 0.0002 below the median.
+- **Limits.** `DockerSandbox` passes `sandbox.cpus` (2) and `sandbox.memory_gb` (4), the numbers A3's prompt states. `--memory-swap` equals `--memory`, so a script over the limit is killed at once (exit code 137) instead of swapping. `/tmp` is 1 GB. The thread variables (OMP, BLAS, joblib) are set to the CPU count, since a container still sees every core of the host, and `CUDA_VISIBLE_DEVICES` is empty. The process limit is 256, because threads count against it. The subprocess sandbox enforces no memory limit, but caps threads and hides GPUs the same way; before 22 Oct a random forest with `n_jobs=-1` ran 2.5 times faster uncapped on an 8-core Mac.
 - **Output folder permissions.** The container runs as uid 65534. On Linux it cannot write to a host folder with mode 755, so `DockerSandbox` makes each node's output folder world-writable before the run.
 - **Abandon.** `run_script` names its container internally, so the controller cannot call `abandon_experiment` on a running node. This is fine because abandon is cut from scope.
+- **Tests.** `tests/test_sandbox.py` checks the docker command without Docker, and runs the container tests (read-only harness, timeout, output folder, memory kill) only when a Docker daemon is up.
 
 ## Role 1: LLM logging (built on Medhini's `imle.llm_log.log_llm_call`)
 
@@ -60,7 +57,7 @@ def log_llm_call(run_id, agent, model, prompt, completion, input_tokens, output_
 
 **What it does:** appends one record per LLM call to `runs/<run_id>/llm_calls.jsonl`.
 
-Her branch has the logger but no API client, so role 2 wrote one in `imle/llm.py`. It calls `log_llm_call` when that function exists, and writes an identical record itself until the branch is merged.
+Her branch had the logger but no API client, so role 2 wrote one in `imle/llm.py`. It calls `log_llm_call`, merged on `roles-1-4` with her branch.
 
 The model was Xiaomi MiMo-V2.6-Flash (team choice, 18 Oct). On 22 Oct role 2 switched the default to DeepSeek V4 Flash 0731 for the first experiment runs (2-hour budget, enough to show partial results at the presentation). It costs about a tenth of MiMo through the cheapest providers, has no daily request cap like the free models, and its dated name keeps it from changing during the experiment. The free models tried first were MiniMax-M3.1-Flash (free only until 22 Oct) and Nemotron 3 Ultra (about 8 two-hour runs a day per account under OpenRouter's free cap).
 
@@ -75,7 +72,9 @@ The model was Xiaomi MiMo-V2.6-Flash (team choice, 18 Oct). On 22 Oct role 2 swi
 
 ## Role 1: grading and launching
 
-- `test_score` stays empty. Each scored node keeps its test submission at `nodes/<node_id>/submission.csv`, so grading can happen after the run.
+- **Node test scores.** The stand-in evaluator fills `test_score` on every node, for analysis only. Each scored node also keeps its test submission at `nodes/<node_id>/submission.csv`.
+- **Grading (24 Oct):** `python scripts/grade.py runs/grid` grades each finished run's `submission.csv` (and `final/submission_<rank>.csv` with top_k) with MLE-bench's own grader, and writes `grade.json`: score, valid, above median, medals and thresholds. MLE-bench stays in its own venv, so subprocess-sandbox scripts cannot import it and read private answers. Point to its Python with `MLEBENCH_PYTHON`.
+- **Grid (24 Oct):** `configs/schedule.yaml` lists the 126 runs in run order (C1, C4, C5, A1-off, A4-off). `python scripts/launch_grid.py --shard i/N` runs machine i's share of it through `cloud_run.py`, so a crash or reboot resumes. `--status` shows the whole grid. Runs go to `runs/grid/`, apart from the pilots. A condition whose policy has no `decide` (C5 until role 3 writes it) is reported as blocked and skipped.
 - **Resume:** `python -m imle.controller --resume runs/<run_id>` continues a crashed run from its last complete checkpoint. The node that was running is moved to `nodes/_unfinished/`. Time between the crash and the resume is not charged to the budget.
 - **Extend:** `python -m imle.controller --resume runs/<run_id> --budget-hours H` gives a run, finished or not, a total budget of H hours and continues it. The tree, random state and findings carry on, so a 2-hour run extended to 4 searches as a 4-hour run would, except that scripts started just before the first stop had shorter time limits. The final node is chosen again at the end, and `machine.jsonl` records the extension. On a new run, `--budget-hours` replaces `budget.wall_clock_s`.
 - **Scripted monitors (22 Oct):** the controller runs the policies named in the config's `monitors` itself, at every safe point, rather than the launcher starting each as its own process. A separate process would read checkpoints on its own clock, so whether a prune lands before node 18 or node 19 would depend on the machine, and two runs with the same seed could differ. Each policy is `imle.policies.<name>.decide(run_dir, ck) -> list[dict]`, where `ck` is the checkpoint just written (`step`, `tree`, `findings`, `status`) and each dict has `action` and, as needed, `target`, `params` and `note`. The controller adds `id`, `ts` and `source`, appends them to `queue.jsonl`, and applies the queue at the same safe point, through the same code as the dashboard. A policy that raises is reported and skipped. A condition naming a policy without `decide` refuses to start, so a C4 or C5 run can never silently be a C1 run. `human` (C6) is skipped: the dashboard writes to the queue itself. Roles 3 and 4: this is the signature assumed for `finding_correction` and `divergence_prune`; tell role 2 if you need another.
@@ -129,7 +128,7 @@ def reflect(llm, tree: Tree, findings: list[dict], run_dir: Path) -> list[dict]
 - **When it is missing:** the run continues without findings and prints a warning.
 - **A4-off:** with `agents.reflection: false` it is never called and no findings reach the prompt.
 
-## Role 4: interventions (stand-in in `imle/apply.py`)
+## Role 4: interventions (`imle/apply.py`)
 
 ```python
 def apply_pending(run_dir: Path, tree: Tree, findings: list[dict], state: SearchState) -> list[AppliedRecord]
@@ -137,7 +136,7 @@ def apply_pending(run_dir: Path, tree: Tree, findings: list[dict], state: Search
 
 **What it does:** at a safe point, applies or drops every queued intervention not yet handled, in timestamp order, and appends each outcome to `applied.jsonl` with a reason.
 
-Nothing from role 4 was pushed, so role 2 wrote this to the protocol in `intervention-protocol.md`. Role 4 owns it and can rewrite it freely; keep the signature or tell role 2. How each action is handled:
+Role 2 wrote this as a stand-in to the protocol in `intervention-protocol.md`; on 24 Oct it was kept as role 4's implementation on `roles-1-4`. How each action is handled:
 
 | Action | Applied when | Effect |
 |---|---|---|
@@ -149,7 +148,26 @@ Nothing from role 4 was pushed, so role 2 wrote this to the protocol in `interve
 | `rebudget` | `params.seconds` is a number | added to the wall-clock budget |
 | `abandon` | never | dropped (scope cut) |
 
-If anything was applied, the controller writes a second checkpoint straight away, so monitors see the effect without waiting for the next node. A malformed line in `queue.jsonl` makes `intervention.read_all` raise. `apply_pending` catches that and skips the safe point instead of crashing the run, but the bad line then blocks the queue until it is removed. Role 4 should make `read_all` skip bad lines.
+If anything was applied, the controller writes a second checkpoint straight away, so monitors see the effect without waiting for the next node. A malformed line in `queue.jsonl` (bad JSON, unknown action) is reported and skipped by `intervention.read_all`, so it no longer blocks the items after it.
+
+**C4 policy (24 Oct).** `imle.policies.divergence_prune.decide` checks the node that just finished. Its lineage's best-probe working node is the anchor. The policy prunes from the anchor's child down when all of these hold since the anchor:
+
+- at least 2 working nodes came after it;
+- validation gained at least 1%;
+- probe lost at least 1%;
+- with the stand-in's labels, the probe loss holds in 95% of paired bootstrap resamples.
+
+The thresholds are `policies.divergence_prune` in `configs/base.yaml`. `scripts/replay_policy.py` runs a policy over saved runs to show where it would have acted. On the six C1 pilots it fires once: MiniMax spooky, after n37, where post hoc it removes the subtree with C1's final pick.
+
+**Dashboard (24 Oct).** `streamlit run dashboard/app.py` shows:
+
+- validation and probe over the run;
+- the tree;
+- each node's plan, script and output;
+- findings;
+- the intervention history.
+
+It queues every action through `imle.monitor.queue_intervention`. Replay mode steps through checkpoints. On running runs, it logs what a person does to `dashboard_log.jsonl`, for C6. The session protocol is `docs/c6-protocol.md`.
 
 ## Role 4: checkpoint contents
 
