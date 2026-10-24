@@ -29,6 +29,7 @@ from __future__ import annotations
 import ast
 import hashlib
 import json
+import math
 import re
 import stat
 from enum import Enum
@@ -121,7 +122,8 @@ def _context(saved: dict[str, Any]) -> SimpleNamespace:
 def prepare(task: str, run_dir: Path, seed: int) -> SimpleNamespace:
     """Build the splits and the harness for `task` once, freeze the harness, and return the task context.
 
-    If the harness is already frozen (prepare called again after a crash), it is
+    The scoring mode comes from run_dir/config.yaml (`agents.evaluation`, see
+    scoring_for) and is frozen with the harness. If the harness is already frozen (prepare called again after a crash), it is
     verified and the saved context is returned; nothing is rebuilt.
     """
     run_dir = Path(run_dir)
@@ -129,12 +131,13 @@ def prepare(task: str, run_dir: Path, seed: int) -> SimpleNamespace:
         verify(run_dir)
         return _context(json.loads((run_dir / A1_DIR / "context.json").read_text(encoding="utf-8")))
 
-    ctx = data_layer.prepare(task, run_dir, seed)
+    mode = scoring_for(_config(run_dir))
+    ctx = mode.adjust(run_dir, task, data_layer.prepare(task, run_dir, seed))
     meta = json.loads((run_dir / HARNESS_DIR / "meta.json").read_text(encoding="utf-8"))
     context = {"description": ctx.description, "input_dir": str(ctx.input_dir),
                "prediction_format": ctx.prediction_format, "metric": ctx.metric,
                "higher_is_better": ctx.higher_is_better}
-    spec = {"task": task, "metric": ctx.metric, "higher_is_better": ctx.higher_is_better,
+    spec = {"task": task, "mode": mode.name, "metric": ctx.metric, "higher_is_better": ctx.higher_is_better,
             "split_seed": meta["split_seed"], "rows": meta["rows"]}
     freeze(run_dir, spec, context)
     return _context(context)
@@ -147,15 +150,114 @@ def _error(message: str) -> SimpleNamespace:
 def score(node_dir: Path) -> SimpleNamespace:
     """Validation, probe and test scores of node_dir/output/predictions.csv, after verifying the harness.
 
-    Never raises: a changed harness, or missing or malformed predictions, come back as `error`.
+    The scoring mode (A1 on or off) is the one frozen in the harness spec. Never raises:
+    a changed harness, or missing or malformed predictions, come back as `error`.
     """
     node_dir = Path(node_dir)
     run_dir = node_dir.parent.parent
     try:
-        verify(run_dir)
+        spec = verify(run_dir)
     except HarnessIntegrityError as e:
         return _error(f"harness_integrity: {e}")
-    return data_layer.score(node_dir)
+    return SCORING[spec.get("mode", HarnessScoring.name)].score(node_dir)
+
+
+# --------------------------------------------------------------------------- scoring modes (A1 on / A1 off)
+
+
+class HarnessScoring:
+    """A1 on: validation and probe are both scored by the frozen harness."""
+
+    name = "harness"
+
+    def adjust(self, run_dir: Path, task: str, ctx: SimpleNamespace) -> SimpleNamespace:
+        """The task context unchanged."""
+        return ctx
+
+    def score(self, node_dir: Path) -> SimpleNamespace:
+        return data_layer.score(node_dir)
+
+
+SELF_REPORT_FILE = "val_score.json"
+
+SELF_REPORT_FORMAT = (
+    " Also hold out part of train.csv yourself as a validation set, compute {metric} on it with the model the "
+    "predictions come from, and write it to os.path.join(OUTPUT_DIR, \"{file}\") as {{\"val_score\": <number>}}. "
+    "That number is the validation score this run uses to compare scripts."
+)
+
+
+class SelfReportScoring:
+    """A1 off (the ablation): the script makes its own split and reports its own validation score.
+
+    The validation rows rejoin train.csv, labelled, and leave predict.csv; the script
+    writes OUTPUT_DIR/val_score.json. The probe rows stay in predict.csv and, like the
+    test rows, are still scored by the frozen harness, so the probe is the same in
+    every condition.
+    """
+
+    name = "self_report"
+
+    def adjust(self, run_dir: Path, task: str, ctx: SimpleNamespace) -> SimpleNamespace:
+        """Move the validation rows into train.csv and ask for a self-reported score."""
+        import numpy as np
+        import pandas as pd
+
+        harness, inputs = run_dir / HARNESS_DIR, Path(ctx.input_dir)
+        meta = json.loads((harness / "meta.json").read_text(encoding="utf-8"))
+        as_str = {"id": str} if not meta["id_dtype"].startswith("int") else None
+        labels = pd.read_csv(harness / "labels.csv", dtype=as_str, keep_default_na=False, na_values=[""])
+        predict = pd.read_csv(inputs / "predict.csv", dtype=as_str)
+        train = pd.read_csv(inputs / "train.csv", dtype=as_str)
+
+        val = labels[labels["split"] == "val"]
+        label_name = data_layer.TASKS[task].label_name
+        val_labels = val[["id", *meta["label_cols"]]].rename(columns={"label": label_name} if label_name else {})
+        val_rows = predict.merge(val_labels, on="id", how="inner")
+        if len(val_rows) != len(val):
+            raise HarnessIntegrityError(f"{len(val)} validation labels but {len(val_rows)} rows in predict.csv")
+        combined = pd.concat([train, val_rows[train.columns]], ignore_index=True)
+        order = np.random.default_rng(meta["split_seed"]).permutation(len(combined))
+        combined.iloc[order].to_csv(inputs / "train.csv", index=False)
+        predict[~predict["id"].isin(val["id"])].to_csv(inputs / "predict.csv", index=False)
+        labels[labels["split"] != "val"].to_csv(harness / "labels.csv", index=False)
+
+        fmt = ctx.prediction_format + SELF_REPORT_FORMAT.format(metric=ctx.metric, file=SELF_REPORT_FILE)
+        return SimpleNamespace(**{**vars(ctx), "prediction_format": fmt})
+
+    def score(self, node_dir: Path) -> SimpleNamespace:
+        import pandas as pd
+
+        if not (node_dir / "output" / "predictions.csv").exists():
+            return _error("predictions.csv not found")
+        try:
+            reported = json.loads((node_dir / "output" / SELF_REPORT_FILE).read_text(encoding="utf-8"))
+            val = float(reported["val_score"])
+            if not math.isfinite(val):
+                raise ValueError("val_score is not a finite number")
+        except FileNotFoundError:
+            return _error(f"{SELF_REPORT_FILE} not found: the script must report its own validation score")
+        except (json.JSONDecodeError, KeyError, TypeError, ValueError) as e:
+            return _error(f"{SELF_REPORT_FILE} is invalid: {str(e)[:200]}")
+        try:
+            joined, meta = data_layer.labelled_predictions(node_dir)
+            probe = data_layer.metric(joined[joined.split == "probe"], meta)
+            test = data_layer.metric(joined[joined.split == "test"], meta)
+            # The stand-in's own submission writer, so the file is in MLE-bench's format (interface request 2).
+            data_layer._submission(joined, meta, node_dir.parent.parent / HARNESS_DIR).to_csv(
+                node_dir / "submission.csv", index=False)
+        except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as e:
+            return _error(str(e)[:500])
+        return SimpleNamespace(val_score=val, probe_score=probe, test_score=test, error=None)
+
+
+SCORING = {HarnessScoring.name: HarnessScoring(), SelfReportScoring.name: SelfReportScoring()}
+
+
+def scoring_for(cfg: dict) -> HarnessScoring | SelfReportScoring:
+    """The scoring mode for a run config: self-report when `agents.evaluation` is false (A1-off)."""
+    on = bool((cfg.get("agents") or {}).get("evaluation", True))
+    return SCORING[HarnessScoring.name if on else SelfReportScoring.name]
 
 
 def screen(llm: LLM, script: str) -> str | None:
