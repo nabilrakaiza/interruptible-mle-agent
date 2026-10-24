@@ -100,6 +100,25 @@ def test_existing_findings_are_shown_and_duplicates_dropped(tmp_path: Path):
     assert first[0]["id"] in llm.prompts[0]
 
 
+def test_deleted_finding_is_not_written_again(tmp_path: Path):
+    """After a `correct` deletes a finding, A4 is told so and the same finding is never added back."""
+    from imle.apply import apply_pending
+    from imle.intervention import Action, Intervention, append
+    from imle.state import SearchState
+
+    run_dir = run_dir_with(tmp_path, num_drafts=3, every_n=1)
+    findings = a4.reflect(ScriptedLLM(GOOD), make_tree(3), [], run_dir)
+    append(run_dir / "queue.jsonl", Intervention(id="c1", ts="2026-10-24T00:00:00Z", source="finding_correction",
+                                                 action=Action.CORRECT, target=findings[0]["id"]))
+    apply_pending(run_dir, make_tree(3), findings, SearchState())
+    assert findings == []
+    llm = ScriptedLLM(GOOD)   # the model states the deleted finding again
+    again = a4.reflect(llm, make_tree(4), findings, run_dir)
+    assert again == []
+    assert "removed because later nodes contradicted them" in llm.prompts[0]
+    assert "solid baseline" in llm.prompts[0]
+
+
 def test_max_findings_keeps_newest():
     new = [a4.Finding.create(f"Finding number {i} about the data.", [a4.Evidence(node_id="n0")]) for i in range(4)]
     kept = a4.merge([], new, max_findings=3)
@@ -133,7 +152,7 @@ def test_reflect_logs_failure_and_keeps_findings(tmp_path: Path, capsys):
     assert "A4 reflection failed" in capsys.readouterr().out
     errors = (run_dir / "a4" / "errors.jsonl").read_text().splitlines()
     assert json.loads(errors[0])["finished_nodes"] == 3
-    assert json.loads((run_dir / "a4" / "state.json").read_text()) == {"next_boundary": 5}
+    assert json.loads((run_dir / "a4" / "state.json").read_text()) == {"next_boundary": 5, "written": {}}
 
 
 def test_outage_propagates_and_boundary_stays_pending(tmp_path: Path):

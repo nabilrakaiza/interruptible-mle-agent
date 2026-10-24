@@ -30,7 +30,7 @@ runs/<run_id>/
   a1/harness.json        frozen spec: task, mode, metric, split sizes, SHA-256 of each harness file
   a1/harness.sha256      hash of harness.json
   a1/context.json        the task context returned by prepare
-  a4/state.json          {"next_boundary": <finished nodes>}
+  a4/state.json          {"next_boundary": <finished nodes>, "written": {finding id: text}}
   a4/errors.jsonl        A4 replies that stayed invalid after the retries
 ```
 
@@ -76,6 +76,7 @@ Structured output (`reflection.ask_json`):
   - An LLM outage leaves the boundary pending, so A4 tries again after the next node.
   - A reply still invalid after the retries is logged with a warning, and the findings stay unchanged until the next boundary. The run never crashes on a bad A4 reply.
   - At most 3 new findings come from each call, and at most `reflection.max_findings` (default 10, oldest dropped) are kept.
+  - A finding that a `correct` deleted (C5 or a human) is listed in A4's prompt as removed and is never added back, even if A4 states it again. Without this, A4 re-derived the deleted finding at the next boundary in an end-to-end check, and C5, which skips findings it has already corrected, left it in place.
 
 ## Reliability and analysis scripts
 

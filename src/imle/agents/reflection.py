@@ -7,7 +7,9 @@ The controller calls `reflect` after every node (docs/core-agent-assumptions.md)
 It acts only at a phase boundary: once the first `search.num_drafts` nodes have
 finished, then every `reflection.every_n` finished nodes (default 10). The next
 boundary is kept in <run_dir>/a4/state.json, so a resumed run or an LLM outage
-picks up where it stopped.
+picks up where it stopped; so is the text of every finding A4 wrote, so a finding
+that a `correct` intervention deleted (applied.jsonl) is shown to A4 as removed and
+never added back.
 
 A4 reads only the tree: each node's plan, operator, status, error category and
 validation score. It never sees data, and never sees probe or test scores, because
@@ -106,7 +108,7 @@ buggy node. The metric is {metric} ({direction} is better).
 # Findings already recorded
 
 {existing}
-
+{retracted}
 # Instructions
 
 Write up to {k} new findings that are not already recorded: lessons that would help
@@ -166,15 +168,44 @@ def describe_finding(f: dict[str, Any]) -> str:
     return f"- [{f.get('id')}] {f.get('text', '')} ({f.get('effect', 'neutral')}; evidence {cited or 'none'})"
 
 
-def reflection_prompt(tree: Tree, findings: list[dict[str, Any]], metric: str, k: int = NEW_PER_CALL) -> str:
+def reflection_prompt(tree: Tree, findings: list[dict[str, Any]], metric: str, k: int = NEW_PER_CALL,
+                      retracted: list[dict[str, Any]] = ()) -> str:
+    """A4's prompt. `retracted` are findings a `correct` intervention deleted, listed so they are not restated."""
     nodes = sorted(_finished(tree), key=lambda n: int(n.id[1:]) if n.id[1:].isdigit() else n.id)
+    removed = ""
+    if retracted:
+        removed = ("\n# Findings removed because later nodes contradicted them\n\nDo not record these again, "
+                   "in any wording.\n\n" + "\n".join(f"- [{f['id']}] {f['text']}" for f in retracted) + "\n")
     return PROMPT.format(metric=metric, direction="higher" if tree.higher_is_better else "lower",
                          nodes="\n".join(describe_node(n) for n in nodes),
-                         existing="\n".join(describe_finding(f) for f in findings) or "None yet.", k=k)
+                         existing="\n".join(describe_finding(f) for f in findings) or "None yet.",
+                         retracted=removed, k=k)
+
+
+def retracted_findings(run_dir: Path, written: dict[str, str]) -> list[dict[str, str]]:
+    """Findings an applied `correct` deleted (no replacement), from applied.jsonl, as {id, text} in order.
+
+    `written` maps the IDs of findings A4 wrote to their text; the applied log has only the ID.
+    """
+    path = run_dir / "applied.jsonl"
+    if not path.exists():
+        return []
+    out, seen = [], set()
+    for line in path.read_text(encoding="utf-8").splitlines():
+        if not line.strip():
+            continue
+        record = json.loads(line)
+        item = record.get("intervention", {})
+        target = item.get("target")
+        if record.get("outcome") == "applied" and item.get("action") == "correct" and target not in seen \
+                and not (item.get("params") or {}).get("replacement"):
+            seen.add(target)
+            out.append({"id": target, "text": written.get(target, "")})
+    return out
 
 
 def propose(llm: LLM, tree: Tree, findings: list[dict[str, Any]], step: int, metric: str = "the task metric",
-            max_retries: int = MAX_RETRIES) -> list[Finding]:
+            max_retries: int = MAX_RETRIES, retracted: list[dict[str, Any]] = ()) -> list[Finding]:
     """Ask A4 for new findings about the finished nodes. Raises ReflectionError if no valid reply arrives."""
     finished = {n.id for n in _finished(tree)}
 
@@ -184,7 +215,8 @@ def propose(llm: LLM, tree: Tree, findings: list[dict[str, Any]], step: int, met
             raise ValueError(f"unknown or unfinished node IDs cited: {unknown}")
 
     try:
-        reply = ask_json(llm, agent="reflection", system=SYSTEM, user=reflection_prompt(tree, findings, metric),
+        reply = ask_json(llm, agent="reflection", system=SYSTEM,
+                         user=reflection_prompt(tree, findings, metric, retracted=list(retracted)),
                          schema=ReflectionReply, max_retries=max_retries, check=check)
     except StructuredOutputError as e:
         raise ReflectionError(str(e)) from e
@@ -196,10 +228,15 @@ def propose(llm: LLM, tree: Tree, findings: list[dict[str, Any]], step: int, met
     return out
 
 
-def merge(findings: list[dict[str, Any]], new: list[Finding], max_findings: int = MAX_FINDINGS) -> list[dict[str, Any]]:
-    """Existing findings plus the new ones that are not duplicates, keeping the newest `max_findings`."""
-    seen_ids = {f.get("id") for f in findings}
-    seen_text = {normalise(str(f.get("text", ""))) for f in findings}
+def merge(findings: list[dict[str, Any]], new: list[Finding], max_findings: int = MAX_FINDINGS,
+          retracted: list[dict[str, str]] = ()) -> list[dict[str, Any]]:
+    """Existing findings plus the new ones that are neither duplicates nor retracted, keeping the newest `max_findings`.
+
+    A finding a `correct` deleted is never added back, even if A4 states it again.
+    """
+    known = [*findings, *retracted]
+    seen_ids = {f.get("id") for f in known}
+    seen_text = {normalise(str(f.get("text", ""))) for f in known if f.get("text")}
     out = list(findings)
     for f in new:
         if f.id in seen_ids or normalise(f.text) in seen_text:
@@ -210,12 +247,14 @@ def merge(findings: list[dict[str, Any]], new: list[Finding], max_findings: int 
     return out[-max_findings:] if max_findings > 0 else out
 
 
-def _state(run_dir: Path, first: int) -> dict[str, int]:
+def _state(run_dir: Path, first: int) -> dict[str, Any]:
+    """{"next_boundary": finished nodes, "written": {finding id: text} for every finding A4 has written}."""
     path = run_dir / A4_DIR / "state.json"
-    return json.loads(path.read_text(encoding="utf-8")) if path.exists() else {"next_boundary": first}
+    state = json.loads(path.read_text(encoding="utf-8")) if path.exists() else {}
+    return {"next_boundary": state.get("next_boundary", first), "written": state.get("written", {})}
 
 
-def _save_state(run_dir: Path, state: dict[str, int]) -> None:
+def _save_state(run_dir: Path, state: dict[str, Any]) -> None:
     path = run_dir / A4_DIR / "state.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state), encoding="utf-8")
@@ -239,9 +278,12 @@ def reflect(llm: LLM, tree: Tree, findings: list[dict[str, Any]], run_dir: Path)
     context = run_dir / "task_context.json"
     metric = json.loads(context.read_text(encoding="utf-8")).get("metric", "the task metric") \
         if context.exists() else "the task metric"
+    retracted = retracted_findings(run_dir, state["written"])
     try:
-        new = propose(llm, tree, findings, step=finished, metric=metric, max_retries=settings["max_retries"])
-        result = merge(findings, new, settings["max_findings"])
+        new = propose(llm, tree, findings, step=finished, metric=metric, max_retries=settings["max_retries"],
+                      retracted=retracted)
+        result = merge(findings, new, settings["max_findings"], retracted)
+        state["written"].update({f["id"]: f["text"] for f in result if f.get("id") not in state["written"]})
     except ReflectionError as e:
         print(f"warning: A4 reflection failed at {finished} nodes, findings unchanged: {e}")
         log = run_dir / A4_DIR / "errors.jsonl"
@@ -250,5 +292,5 @@ def reflect(llm: LLM, tree: Tree, findings: list[dict[str, Any]], run_dir: Path)
             f.write(json.dumps({"ts": datetime.now(timezone.utc).isoformat(), "finished_nodes": finished,
                                 "error": str(e)}) + "\n")
         result = findings
-    _save_state(run_dir, {"next_boundary": finished + settings["every_n"]})
+    _save_state(run_dir, {"next_boundary": finished + settings["every_n"], "written": state["written"]})
     return result
