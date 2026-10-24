@@ -581,7 +581,7 @@ def screen_script(script_text: str, task_meta: dict[str, Any] | None = None, llm
     analysis.find_target()
     analysis.r0_paths()
     analysis.r1_r2_r3(_ordered_statements(tree))
-    flags = list({(f.rule, f.line, f.detail): f for f in analysis.flags}.values())
+    flags = list({(f.rule, f.line): f for f in reversed(analysis.flags)}.values())[::-1]  # first flag per line
 
     if llm is not None:
         from imle.agents.reflection import ask_json
