@@ -1,6 +1,6 @@
 # Shared defaults. Condition files override these.
 budget:
-  wall_clock_s: 14400        # 4 hours
+  wall_clock_s: 7200         # 2 hours; extend a finished run with --resume --budget-hours
   script_timeout_s: 3600
   max_nodes: 200
 search:
@@ -10,13 +10,33 @@ search:
   max_debug_depth: 3
   improve_patience: 3
   improve_min_rel_gain: 0.001
+  explore_prob: 0.15         # chance an improve goes to a random non-best node; 0 is plain AIDE greedy
 splits:
   probe_fraction: 0.1
 final_selection: best_val    # best_val | top_k | override
+top_k: 3                     # submissions kept when final_selection is top_k
 agents:
   evaluation: true
   retrieval: true
   reflection: true
+retrieval:                   # A2, used when agents.retrieval is true
+  source: web                # web: cards written from allowlisted docs | static: hand-written cards only
+  cache_dir: data/retrieval_cache  # fetched pages, shared by runs so every run reads the same text
+  max_cards: 8
 llm:
-  model: ${LLM_MODEL}
+  provider: openrouter       # openrouter (experiments) | gemini (local testing)
+  model: ${LLM_MODEL}        # unset or empty: the provider's default, see imle/llm.py
   temperature: 0.7
+  effort: high               # reasoning depth: low | medium | high
+  max_tokens: 64000
+  routing:                   # OpenRouter provider routing, sent as its `provider` object (openrouter only)
+    sort: price              # each call goes to the cheapest available provider, then the next cheapest
+    quantizations: [fp8]     # one precision for every call, so all conditions see the same weights
+    max_price: {prompt: 0.15, completion: 0.30}  # USD per million tokens; above it calls fail, not cost more
+  outage_retries: 5          # failed LLM calls in a row before the run stops (resumable with --resume)
+  outage_wait_s: 30          # wait after a failed call, doubling each time, at most 5 minutes
+sandbox:
+  backend: docker            # docker | subprocess (no isolation, local testing only)
+  image: imle-sandbox:latest # needs Python plus the packages in agents/coding.py
+  cpus: 2                    # limits stated in A3's prompt; role 1's Docker sandbox should enforce the same
+  memory_gb: 4

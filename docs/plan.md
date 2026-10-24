@@ -91,7 +91,7 @@ Everyone adds a line to [`contributions.md`](contributions.md) each week.
 
 These differ from the proposal and will be stated as such in the report.
 
-- **A2 retrieval:** replaced by a few hand-written model cards per modality. This also removes the A2-off ablation and the prompt-injection red-team test, both already marked optional or droppable.
+- **A2 retrieval:** first cut to a few hand-written model cards per modality. Role 2 has since implemented it (19 Oct) over an allowlist of library documentation, with the hand-written cards as the fallback; see `core-agent-assumptions.md`. The A2-off ablation and the prompt-injection red-team test are possible again.
 - **Interventions:** only prune, correct and override are implemented properly. Those are all that C4, C5 and final selection need. Abandon (killing a running script) is skipped.
 - **Container sandbox:** start with a subprocess. Move to Docker with no network and a read-only harness only if there is time before the freeze.
 - **Dashboard:** tree view and the validation-versus-probe chart. Replay mode only if there is time.

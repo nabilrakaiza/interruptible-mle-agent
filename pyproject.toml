@@ -4,8 +4,10 @@ version = "0.1.0"
 description = "Interruptible MLE agent with human intervention in tree search"
 requires-python = ">=3.10"
 dependencies = [
+    "openai>=1.50",          # client for OpenRouter and Gemini (OpenAI-compatible APIs)
     "pydantic>=2",
     "pyyaml",
+    "certifi",               # CA bundle for A2's documentation fetches
     "python-dotenv",
     "pandas",
     "numpy",
@@ -14,6 +16,10 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = ["pytest", "ruff"]
+# What generated scripts may import (agents/coding.py PACKAGES); needed for --sandbox subprocess.
+sandbox = ["numpy", "pandas", "scipy", "scikit-learn", "pillow"]
+# Figures for the analysis scripts (scripts/trajectory.py).
+analysis = ["matplotlib"]
 
 [build-system]
 requires = ["setuptools>=61"]
