@@ -137,6 +137,7 @@ class ReflectionReply(BaseModel):
 
 
 def _settings(run_dir: Path) -> dict[str, Any]:
+    """A4's settings from the run's config.yaml, with the module defaults for missing keys."""
     path = run_dir / "config.yaml"
     cfg = (yaml.safe_load(path.read_text(encoding="utf-8")) or {}) if path.exists() else {}
     a4 = cfg.get("reflection") or {}
@@ -147,6 +148,7 @@ def _settings(run_dir: Path) -> dict[str, Any]:
 
 
 def _finished(tree: Tree) -> list[Node]:
+    """Every node that is no longer running."""
     return [n for n in tree.nodes.values() if n.status != NodeStatus.RUNNING]
 
 
@@ -164,6 +166,7 @@ def describe_node(node: Node) -> str:
 
 
 def describe_finding(f: dict[str, Any]) -> str:
+    """One finding as a prompt line: id, text, effect and the cited node IDs."""
     cited = ", ".join(e.get("node_id", "?") for e in f.get("evidence", []) if isinstance(e, dict))
     return f"- [{f.get('id')}] {f.get('text', '')} ({f.get('effect', 'neutral')}; evidence {cited or 'none'})"
 
@@ -210,6 +213,7 @@ def propose(llm: LLM, tree: Tree, findings: list[dict[str, Any]], step: int, met
     finished = {n.id for n in _finished(tree)}
 
     def check(reply: ReflectionReply) -> None:
+        """Reject a reply that cites node IDs which do not exist or have not finished."""
         unknown = sorted({i for f in reply.findings for i in f.evidence} - finished)
         if unknown:
             raise ValueError(f"unknown or unfinished node IDs cited: {unknown}")
@@ -255,6 +259,7 @@ def _state(run_dir: Path, first: int) -> dict[str, Any]:
 
 
 def _save_state(run_dir: Path, state: dict[str, Any]) -> None:
+    """Write A4's state (next boundary, findings written) to a4/state.json."""
     path = run_dir / A4_DIR / "state.json"
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(state), encoding="utf-8")

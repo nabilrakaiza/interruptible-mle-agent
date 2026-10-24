@@ -26,7 +26,7 @@ runs/<run_id>/
   submission.csv           the final submission (final/submission_<rank>.csv too for top_k)
 ```
 
-## Role 1: sandbox (built: Medhini's `imle.sandbox.run_script`, finished on branch `roles-1-4`)
+## Role 1: sandbox (built: Medhini's `imle.sandbox.run_script`, finished on branch `combined-agent`)
 
 ```python
 def run_script(script_path, task_dir, timeout_s=3600, image="imle-sandbox:latest", harness_dir=None,
@@ -38,7 +38,7 @@ def run_script(script_path, task_dir, timeout_s=3600, image="imle-sandbox:latest
 
 `imle/execution.py` wraps it as `DockerSandbox`. The task folder is the run's `workspace/` and the output folder is the node's `output/`. Each script gets `OUTPUT_DIR = "/output"` as its first line. Any module-level `OUTPUT_DIR = ...` the model wrote itself is turned into `pass` plus a comment, since MiniMax-M3.1-Flash set it to `/kaggle/working` or `os.environ.get(...)` in all 9 of its test scripts despite the prompt. `nodes/<id>/solution.py` keeps the model's text unchanged. `SubprocessSandbox` does the same without Docker, for local testing only; choose it with `sandbox.backend: subprocess` or `--sandbox subprocess`.
 
-Medhini's branch (13 and 20 Oct) was merged into `roles-1-4` on 24 Oct, and the requests role 2 had sent her were done there:
+Medhini's branch (13 and 20 Oct) was merged into `combined-agent` on 24 Oct, and the requests role 2 had sent her were done there:
 
 - **Image.** `Dockerfile` and `docker-requirements.txt` pin Python 3.13.6, numpy 2.5.4, pandas 3.0.6, scipy 1.18.1, scikit-learn 1.9.1 and pillow 12.3.0, plus torch 2.14.1 from PyTorch's CPU-only index (the default Linux wheel pulls in about 2 GB of CUDA libraries). Build it with `docker build -t imle-sandbox:latest .`; `.dockerignore` keeps `runs/` and `data/` out of the build. The prompt tells the model it may use exactly these packages (`PACKAGES` in `agents/coding.py`): change both together.
 
@@ -57,7 +57,7 @@ def log_llm_call(run_id, agent, model, prompt, completion, input_tokens, output_
 
 **What it does:** appends one record per LLM call to `runs/<run_id>/llm_calls.jsonl`.
 
-Her branch had the logger but no API client, so role 2 wrote one in `imle/llm.py`. It calls `log_llm_call`, merged on `roles-1-4` with her branch.
+Her branch had the logger but no API client, so role 2 wrote one in `imle/llm.py`. It calls `log_llm_call`, merged on `combined-agent` with her branch.
 
 The model was Xiaomi MiMo-V2.6-Flash (team choice, 18 Oct). On 22 Oct role 2 switched the default to DeepSeek V4 Flash 0731 for the first experiment runs (2-hour budget, enough to show partial results at the presentation). It costs about a tenth of MiMo through the cheapest providers, has no daily request cap like the free models, and its dated name keeps it from changing during the experiment. The free models tried first were MiniMax-M3.1-Flash (free only until 22 Oct) and Nemotron 3 Ultra (about 8 two-hour runs a day per account under OpenRouter's free cap).
 
@@ -79,7 +79,7 @@ The model was Xiaomi MiMo-V2.6-Flash (team choice, 18 Oct). On 22 Oct role 2 swi
 - **Extend:** `python -m imle.controller --resume runs/<run_id> --budget-hours H` gives a run, finished or not, a total budget of H hours and continues it. The tree, random state and findings carry on, so a 2-hour run extended to 4 searches as a 4-hour run would, except that scripts started just before the first stop had shorter time limits. The final node is chosen again at the end, and `machine.jsonl` records the extension. On a new run, `--budget-hours` replaces `budget.wall_clock_s`.
 - **Scripted monitors (22 Oct):** the controller runs the policies named in the config's `monitors` itself, at every safe point, rather than the launcher starting each as its own process. A separate process would read checkpoints on its own clock, so whether a prune lands before node 18 or node 19 would depend on the machine, and two runs with the same seed could differ. Each policy is `imle.policies.<name>.decide(run_dir, ck) -> list[dict]`, where `ck` is the checkpoint just written (`step`, `tree`, `findings`, `status`) and each dict has `action` and, as needed, `target`, `params` and `note`. The controller adds `id`, `ts` and `source`, appends them to `queue.jsonl`, and applies the queue at the same safe point, through the same code as the dashboard. A policy that raises is reported and skipped. A condition naming a policy without `decide` refuses to start, so a C4 or C5 run can never silently be a C1 run. `human` (C6) is skipped: the dashboard writes to the queue itself. Roles 3 and 4: this is the signature assumed for `finding_correction` and `divergence_prune`; tell role 2 if you need another.
 
-## Role 3: evaluator (`agents/evaluation.py`, assumed: nothing pushed yet)
+## Role 3: evaluator (built: Dziand's `agents/evaluation.py`, merged on `combined-agent`)
 
 ```python
 def prepare(task: str, run_dir: Path, seed: int) -> TaskContext
@@ -108,7 +108,9 @@ Why this shape: the holdout labels never enter the sandbox, the script cannot te
 
 Without `prepare` and `score` the controller's command line exits with a message saying so.
 
-**Temporary stand-in (20 Oct).** Until role 3's evaluator is pushed, `imle/stand_in_evaluation.py` implements `prepare` and `score` for the six MLE-bench tasks, so real runs can start. Choose it with `--evaluator stand_in` (stored in the run's `config.yaml`, so a resume keeps it). It has no leakage screen.
+**Built (24 Oct).** Role 3's A1 implements these signatures on the stand-in's data layer, so its splits and scores are the stand-in's. It adds a frozen, hashed harness and a rule-based leakage screen, and an A1-off mode in which the script reports its own validation score. Details: `docs/dziand_notes.md`. It is the default evaluator and the one in `configs/schedule.yaml`.
+
+**Stand-in (20 Oct, still available).** Before role 3's evaluator was pushed, `imle/stand_in_evaluation.py` implements `prepare` and `score` for the six MLE-bench tasks, so real runs can start. Choose it with `--evaluator stand_in` (stored in the run's `config.yaml`, so a resume keeps it). It has no leakage screen.
 
 - **Data:** reads what `mlebench prepare -c <task>` wrote, from `$MLEBENCH_DATA_DIR` or MLE-bench's default cache folder. Each run gets `stand_in/input/` (what the agent sees) and `stand_in/harness/` (labels, never shown).
 - **Format:** every task becomes `train.csv` and `predict.csv` with an `id` column, plus `images/` (cactus, leaf) or `geometry/<id>.xyz` (nomad, with renumbered ids because train and test ids overlap). Pizza's JSON becomes CSV, keeping only the fields the test set has. The competition description is followed by a "Files for this run" note.
@@ -116,7 +118,7 @@ Without `prepare` and `score` the controller's command line exits with a message
 - **Scores:** the same metric code as MLE-bench's `grade.py`, and the same rejections (wrong ids, probabilities not summing to one, negative regression values). `score` also returns `test_score`, which the controller stores on the node for analysis only; no prompt shows it. The test rows go to `submission.csv` in MLE-bench's format. Checked on all six tasks: the test score equals `mlebench grade-sample` on that file.
 - **Isolation:** with `--sandbox subprocess` a script could read `../stand_in/harness/labels.csv` or MLE-bench's private folder. Docker mounts only the workspace, so this needs role 1's image.
 
-## Role 3: reflection (`agents/reflection.py`, assumed: nothing pushed yet)
+## Role 3: reflection (built: Dziand's `agents/reflection.py`, merged on `combined-agent`)
 
 ```python
 def reflect(llm, tree: Tree, findings: list[dict], run_dir: Path) -> list[dict]
@@ -127,6 +129,7 @@ def reflect(llm, tree: Tree, findings: list[dict], run_dir: Path) -> list[dict]
 - **Finding format:** `{"id": "f1", "text": "...", "evidence": [{"node_id": "n3", "val_score": 0.41}]}`. The prompt shows the ID, the text and the evidence, and `correct` interventions find findings by `id`.
 - **When it is missing:** the run continues without findings and prints a warning.
 - **A4-off:** with `agents.reflection: false` it is never called and no findings reach the prompt.
+- **Built (24 Oct):** a phase boundary after the first `search.num_drafts` nodes, then every `reflection.every_n` (10); at most 3 new findings per call and `reflection.max_findings` (10) kept. Findings also carry `step` and `effect`, and a finding deleted by `correct` is never added back. Details: `docs/dziand_notes.md`.
 
 ## Role 4: interventions (`imle/apply.py`)
 
@@ -136,7 +139,7 @@ def apply_pending(run_dir: Path, tree: Tree, findings: list[dict], state: Search
 
 **What it does:** at a safe point, applies or drops every queued intervention not yet handled, in timestamp order, and appends each outcome to `applied.jsonl` with a reason.
 
-Role 2 wrote this as a stand-in to the protocol in `intervention-protocol.md`; on 24 Oct it was kept as role 4's implementation on `roles-1-4`. How each action is handled:
+Role 2 wrote this as a stand-in to the protocol in `intervention-protocol.md`; on 24 Oct it was kept as role 4's implementation. How each action is handled:
 
 | Action | Applied when | Effect |
 |---|---|---|

@@ -96,7 +96,7 @@ Running:
 ```bash
 # one run (starts, or resumes if it was cut off)
 python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
-    --task spooky-author-identification --seed 0 --evaluator stand_in --sandbox docker
+    --task spooky-author-identification --seed 0 --sandbox docker
 
 # the experiment grid (configs/schedule.yaml), split over N machines; run again to resume
 python scripts/launch_grid.py --status

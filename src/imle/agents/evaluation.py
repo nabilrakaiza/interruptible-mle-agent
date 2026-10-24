@@ -54,10 +54,12 @@ class HarnessIntegrityError(Exception):
 
 
 def _sha256(path: Path) -> str:
+    """Hex SHA-256 of a file's bytes."""
     return hashlib.sha256(path.read_bytes()).hexdigest()
 
 
 def _canonical(data: Any) -> bytes:
+    """Stable JSON bytes (sorted keys, no spaces), so the same spec always hashes the same."""
     return json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
 
 
@@ -106,6 +108,7 @@ def verify(run_dir: Path) -> dict[str, Any]:
 
 
 def _config(run_dir: Path) -> dict:
+    """The run's config.yaml as a dict, or {} if there is none."""
     import yaml
 
     path = run_dir / "config.yaml"
@@ -113,6 +116,7 @@ def _config(run_dir: Path) -> dict:
 
 
 def _context(saved: dict[str, Any]) -> SimpleNamespace:
+    """The saved task context as the namespace prepare returns, with input_dir as a Path."""
     return SimpleNamespace(**{**saved, "input_dir": Path(saved["input_dir"])})
 
 
@@ -144,6 +148,7 @@ def prepare(task: str, run_dir: Path, seed: int) -> SimpleNamespace:
 
 
 def _error(message: str) -> SimpleNamespace:
+    """A score result with no scores and the given error."""
     return SimpleNamespace(val_score=None, probe_score=None, test_score=None, error=message)
 
 
@@ -175,6 +180,7 @@ class HarnessScoring:
         return ctx
 
     def score(self, node_dir: Path) -> SimpleNamespace:
+        """Validation, probe and test scores from the harness labels."""
         return data_layer.score(node_dir)
 
 
@@ -226,6 +232,7 @@ class SelfReportScoring:
         return SimpleNamespace(**{**vars(ctx), "prediction_format": fmt})
 
     def score(self, node_dir: Path) -> SimpleNamespace:
+        """The script's reported validation score, with probe and test scored by the harness."""
         import pandas as pd
 
         if not (node_dir / "output" / "predictions.csv").exists():
@@ -294,6 +301,7 @@ class LeakageReport(BaseModel):
 
     @classmethod
     def of(cls, flags: list[Flag], target: str | None) -> LeakageReport:
+        """A report from the flags: sorted by line, verdict leak, warn or clean by the worst severity."""
         severities = {f.severity for f in flags}
         verdict = "leak" if Severity.LEAK in severities else "warn" if severities else "clean"
         return cls(flags=sorted(flags, key=lambda f: (f.line or 0, f.rule)), verdict=verdict, target=target)
@@ -322,6 +330,7 @@ _SAME_COLUMNS = {"copy", "fillna", "reset_index", "sample", "dropna", "sort_valu
 
 
 def _call_name(call: ast.Call) -> str:
+    """The called function's or method's name, or "" for anything more complex."""
     f = call.func
     return f.attr if isinstance(f, ast.Attribute) else f.id if isinstance(f, ast.Name) else ""
 
@@ -340,6 +349,7 @@ class _Analysis:
     """A flow-ordered pass over a script: which variables hold the training frame, predict rows or validation rows."""
 
     def __init__(self, tree: ast.Module, target: str | None):
+        """Start an analysis of one parsed script; `target` is the label column, if known."""
         self.tree = tree
         self.bindings: dict[str, ast.AST] = {}     # latest assignment per name, in source order
         self.taint: dict[str, set[str]] = {}        # name -> {"train", "predict", "val"}
@@ -477,6 +487,7 @@ class _Analysis:
     # ---- rules
 
     def r0_paths(self) -> None:
+        """Rule R0: flag string paths that reach outside ./input (harness, labels, MLE-bench, parents)."""
         for call in ast.walk(self.tree):
             if not isinstance(call, ast.Call) or _call_name(call) in _NOT_FILE_CALLS:
                 continue
@@ -492,6 +503,7 @@ class _Analysis:
                                        detail="walks up out of the working directory (.parent.parent)"))
 
     def r1_r2_r3(self, statements: list[ast.stmt]) -> None:
+        """Rules R1 to R3 over the statements in order, tracking which names hold which rows."""
         fitted_on_val: dict[str, int] = {}   # model name -> line of a fit that included validation rows
         for node in statements:
             if isinstance(node, ast.Assign):
@@ -501,6 +513,7 @@ class _Analysis:
                 self.check_calls(node.value, fitted_on_val)
 
     def check_calls(self, expr: ast.AST, fitted_on_val: dict[str, int]) -> None:
+        """Flag fit calls that use the target as a feature (R1) or fit and score on validation rows (R3)."""
         for call in ast.walk(expr):
             if not isinstance(call, ast.Call) or not isinstance(call.func, ast.Attribute):
                 continue

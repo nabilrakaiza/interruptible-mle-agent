@@ -137,6 +137,7 @@ def analyse(run_dirs: list[Path]) -> tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def main(argv: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Command-line entry point: write per-finding and per-run accuracy CSVs."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("runs", nargs="+", type=Path, help="run folders")
     parser.add_argument("--out", type=Path, default=Path("results/finding_accuracy.csv"))

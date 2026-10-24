@@ -5,7 +5,7 @@
 defaults:
   budget_hours: 2            # matches budget.wall_clock_s in base.yaml; 4 in the proposal
   sandbox: docker            # subprocess on Colab and Kaggle (no Docker there)
-  evaluator: stand_in        # until role 3's A1 exists
+  evaluator: a1              # role 3's A1: the stand-in's splits, plus the frozen harness and leakage screen
   runs_root: runs/grid       # apart from the pilots in runs/, whose folder names could collide
 
 tasks:

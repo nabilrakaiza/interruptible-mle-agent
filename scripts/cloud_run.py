@@ -175,7 +175,7 @@ def main() -> None:
                         help="total wall-clock budget; a finished run with less is continued up to it")
     parser.add_argument("--provider", choices=["openrouter", "gemini"], help="override llm.provider for a new run")
     parser.add_argument("--evaluator", choices=["a1", "stand_in"],
-                        help="stand_in: the temporary MLE-bench evaluator, until role 3's A1 exists")
+                        help="a1 (default): role 3's A1; stand_in: same splits, no harness check or leakage screen")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], default="subprocess",
                         help="subprocess by default: Colab and Kaggle cannot run Docker")
     parser.add_argument("--runs-root", default=str(ROOT / "runs"), help="where the run folder lives while it runs")

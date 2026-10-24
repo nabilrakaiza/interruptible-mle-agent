@@ -69,6 +69,7 @@ def analyse(run_dirs: list[Path], condition_key: str = "condition", seed: int = 
 
 
 def main(argv: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
+    """Command-line entry point: write the validation-test gap tables to --out."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--runs-dir", type=Path, default=Path("runs"))
     parser.add_argument("--glob", default="*", help="run folder names to include, under --runs-dir")

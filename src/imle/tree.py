@@ -45,6 +45,7 @@ class Tree(BaseModel):
     higher_is_better: bool = True
 
     def add(self, node: Node) -> None:
+        """Add a node; its ID must be new and its parent must already exist."""
         if node.id in self.nodes:
             raise ValueError(f"duplicate node id {node.id}")
         if node.parent_id is not None and node.parent_id not in self.nodes:
@@ -52,9 +53,11 @@ class Tree(BaseModel):
         self.nodes[node.id] = node
 
     def children(self, node_id: str) -> list[Node]:
+        """The direct children of a node."""
         return [n for n in self.nodes.values() if n.parent_id == node_id]
 
     def subtree_ids(self, node_id: str) -> list[str]:
+        """The node's ID and the IDs of all its descendants."""
         out, stack = [], [node_id]
         while stack:
             cur = stack.pop()
@@ -63,9 +66,11 @@ class Tree(BaseModel):
         return out
 
     def selectable(self) -> list[Node]:
+        """The working nodes, the only ones search and final selection may pick."""
         return [n for n in self.nodes.values() if n.status == NodeStatus.WORKING]
 
     def best_by_val(self) -> Node | None:
+        """The selectable node with the best validation score, or None."""
         cands = [n for n in self.selectable() if n.val_score is not None]
         if not cands:
             return None

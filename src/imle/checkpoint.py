@@ -13,6 +13,7 @@ from typing import Any
 
 
 def atomic_write_json(path: Path, data: Any) -> None:
+    """Write JSON through a temporary file and a rename, so a crash never leaves half a file."""
     path.parent.mkdir(parents=True, exist_ok=True)
     tmp = path.with_suffix(path.suffix + ".tmp")
     tmp.write_text(json.dumps(data, indent=2, default=str), encoding="utf-8")
@@ -20,10 +21,12 @@ def atomic_write_json(path: Path, data: Any) -> None:
 
 
 def checkpoint_dir(run_dir: Path, step: int) -> Path:
+    """The folder of checkpoint `step`."""
     return run_dir / "checkpoints" / f"{step:06d}"
 
 
 def latest_step(run_dir: Path) -> int | None:
+    """The highest checkpoint number in the run, or None if there is none."""
     root = run_dir / "checkpoints"
     if not root.exists():
         return None
@@ -32,6 +35,7 @@ def latest_step(run_dir: Path) -> int | None:
 
 
 def write(run_dir: Path, step: int, tree: dict, findings: list, status: dict) -> None:
+    """Write one checkpoint: tree, findings, then status, whose presence marks it complete."""
     d = checkpoint_dir(run_dir, step)
     atomic_write_json(d / "tree.json", tree)
     atomic_write_json(d / "findings.json", findings)
@@ -40,6 +44,7 @@ def write(run_dir: Path, step: int, tree: dict, findings: list, status: dict) ->
 
 
 def read(run_dir: Path, step: int | None = None) -> dict | None:
+    """A complete checkpoint as {step, tree, findings, status} (the latest by default), or None."""
     step = latest_step(run_dir) if step is None else step
     if step is None:
         return None

@@ -18,7 +18,7 @@ Role 4. C6 sessions are a few runs where a person watches the dashboard and inte
 
   ```bash
   python scripts/cloud_run.py --config configs/conditions/c6_live.yaml \
-      --task spooky-author-identification --seed 100 --budget-hours 2 --evaluator stand_in
+      --task spooky-author-identification --seed 100 --budget-hours 2
   streamlit run dashboard/app.py
   ```
 

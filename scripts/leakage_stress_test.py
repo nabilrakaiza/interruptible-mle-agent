@@ -119,6 +119,7 @@ def summarise(rows: pd.DataFrame) -> pd.DataFrame:
 
 
 def main(argv: list[str] | None = None) -> pd.DataFrame:
+    """Command-line entry point: screen (and optionally run) the fixtures and write the results."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", type=Path, default=Path("results/leakage_stress.csv"))
     parser.add_argument("--execute", action="store_true", help="also run each fixture on synthetic data")

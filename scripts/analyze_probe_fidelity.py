@@ -59,6 +59,7 @@ def analyse(run_dirs: list[Path], k: int = 5, condition_key: str = "condition", 
 
 
 def main(argv: list[str] | None = None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    """Command-line entry point: write the probe fidelity tables to --out."""
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--runs-dir", type=Path, default=Path("runs"))
     parser.add_argument("--glob", default="*", help="run folder names to include, under --runs-dir")
