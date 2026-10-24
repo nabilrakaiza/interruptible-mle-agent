@@ -76,3 +76,17 @@ Structured output (`reflection.ask_json`):
   - An LLM outage leaves the boundary pending, so A4 tries again after the next node.
   - A reply still invalid after the retries is logged with a warning, and the findings stay unchanged until the next boundary. The run never crashes on a bad A4 reply.
   - At most 3 new findings come from each call, and at most `reflection.max_findings` (default 10, oldest dropped) are kept.
+
+## Reliability and analysis scripts
+
+Each script reads runs only through `imle.checkpoint`, writes CSVs to `--out`, and defines its measures in its docstring.
+
+```bash
+python scripts/leakage_stress_test.py --execute                     # planted leaks vs clean controls
+python scripts/leakage_stress_test.py --scripts 'runs/*/nodes/*/solution.py'   # flag rate on real scripts
+python scripts/finding_accuracy.py runs/*                           # unsupported / replicated findings
+python scripts/analyze_val_test_gap.py --runs-dir runs              # per node, run, condition and task
+python scripts/analyze_probe_fidelity.py --runs-dir runs --k 5      # probe-test Spearman and top-k
+```
+
+The leakage fixtures are one planted script and one clean control per leak type, so the stress test's rates show that the rules catch these patterns. They do not estimate performance on the agent's own scripts. For that, screen real node scripts with `--scripts` and check the flagged ones by hand.
