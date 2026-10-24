@@ -1,3 +1,4 @@
+import argparse
 import importlib.util
 import sys
 from pathlib import Path
@@ -32,7 +33,7 @@ def test_shards_split_the_grid_by_position():
     assert [r.index for r in shards[1]] == [1, 4]
     assert [r.name for r in launch_grid.select(runs, None, ["C1", "b"])] == ["C1_b_seed0", "C1_b_seed1"]
     assert launch_grid.parse_shard("2/3") == (2, 3)
-    with pytest.raises(Exception):
+    with pytest.raises(argparse.ArgumentTypeError):
         launch_grid.parse_shard("3/3")
 
 

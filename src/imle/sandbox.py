@@ -15,12 +15,12 @@ numpy, scikit-learn and torch at the CPU limit, since a container still sees
 every core of the host.
 """
 
-from dataclasses import dataclass
-from pathlib import Path
+import contextlib
 import subprocess
 import time
 import uuid
-import contextlib
+from dataclasses import dataclass
+from pathlib import Path
 
 DEFAULT_IMAGE = "imle-sandbox:latest"
 

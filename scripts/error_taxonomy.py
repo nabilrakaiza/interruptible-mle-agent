@@ -46,6 +46,7 @@ import pandas as pd
 import yaml
 
 from imle import stand_in_evaluation
+from imle.monitor import md_table
 from imle.controller import KILLED_EXIT_CODES, beats, latest_complete_checkpoint
 from imle.controller import same_predictions as controller_same_predictions
 from imle.tree import Node, NodeStatus, Operator, Tree
@@ -267,17 +268,6 @@ def run_summary(tree: Tree, status: dict) -> dict:
         "selection_regret": round(regret, 4) if regret is not None else None,
         "regret_basis": basis,
     }
-
-
-def md_table(df: pd.DataFrame) -> str:
-    """A pandas frame as a markdown table, without needing the tabulate package."""
-    if df.empty:
-        return "(none)\n"
-    cols = [str(c) for c in df.columns]
-    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
-    for _, r in df.iterrows():
-        lines.append("| " + " | ".join("" if pd.isna(v) else str(v) for v in r.tolist()) + " |")
-    return "\n".join(lines) + "\n"
 
 
 def summarise(nodes: pd.DataFrame, runs: pd.DataFrame) -> str:

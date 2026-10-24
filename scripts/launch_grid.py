@@ -29,9 +29,9 @@ import yaml
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "scripts"))
 
-from cloud_run import state  # noqa: E402
+from cloud_run import state
 
-from imle.controller import load_config, load_policies  # noqa: E402
+from imle.controller import load_config, load_policies
 
 
 @dataclass

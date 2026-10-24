@@ -99,10 +99,10 @@ def best_so_far(nodes: pd.DataFrame, higher_is_better: bool) -> pd.DataFrame:
     """
     rows, best = [], None
     for _, n in nodes.iterrows():
-        if n["status"] == "working" and pd.notna(n["val_score"]):
-            if best is None or (n["val_score"] > best["val_score"] if higher_is_better
-                                else n["val_score"] < best["val_score"]):
-                best = n
+        if n["status"] == "working" and pd.notna(n["val_score"]) and (
+                best is None
+                or (n["val_score"] > best["val_score"] if higher_is_better else n["val_score"] < best["val_score"])):
+            best = n
         if best is not None:
             row = {"order": n["order"], "best_node": best["id"], "val_score": best["val_score"],
                    "probe_score": best["probe_score"]}
@@ -125,8 +125,8 @@ def long_scores(frame: pd.DataFrame) -> pd.DataFrame:
 
 def tree_dot(nodes: pd.DataFrame, selected: str | None = None, final: str | None = None) -> str:
     """The search tree as Graphviz DOT: colour by status, label with scores, the selected node outlined."""
-    lines = ['digraph tree {', 'rankdir=LR; node [shape=box, style="rounded,filled", fontname="Helvetica", '
-             'fontsize=10, fontcolor=white]; edge [color="#888888"];']
+    lines = ['digraph tree {', ('rankdir=LR; node [shape=box, style="rounded,filled", fontname="Helvetica", '
+                                'fontsize=10, fontcolor=white]; edge [color="#888888"];')]
     for _, n in nodes.iterrows():
         scores = ""
         if pd.notna(n["val_score"]):
@@ -168,9 +168,9 @@ def intervention_positions(hist: pd.DataFrame, nodes: pd.DataFrame) -> pd.DataFr
     applied = hist[hist["outcome"] == "applied"].copy()
     if applied.empty or nodes.empty:
         return applied.assign(order=pd.Series(dtype=float))
-    finished = pd.to_datetime(nodes["finished_at"], utc=True, errors="coerce")
+    finished = pd.to_datetime(nodes["finished_at"], utc=True, errors="coerce", format="ISO8601")
     applied["order"] = [float((finished <= t).sum()) - 0.5
-                        for t in pd.to_datetime(applied["applied_at"], utc=True, errors="coerce")]
+                        for t in pd.to_datetime(applied["applied_at"], utc=True, errors="coerce", format="ISO8601")]
     return applied
 
 
@@ -207,6 +207,17 @@ def queue_intervention(run_dir: Path, action: Action | str, target: str | None =
     if session:
         log_event(run_dir, session, "queue", intervention=item.id, action=item.action.value, target=item.target)
     return item
+
+
+def md_table(df: pd.DataFrame) -> str:
+    """A pandas frame as a markdown table, without needing the tabulate package."""
+    if df.empty:
+        return "(none)\n"
+    cols = [str(c) for c in df.columns]
+    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
+    for _, r in df.iterrows():
+        lines.append("| " + " | ".join("" if pd.isna(v) else str(v) for v in r.tolist()) + " |")
+    return "\n".join(lines) + "\n"
 
 
 def read_step(run_dir: Path, step: int | None = None) -> dict | None:
