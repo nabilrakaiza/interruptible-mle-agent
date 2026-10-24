@@ -16,9 +16,15 @@ from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
 
-# Packages the prompt tells the model it may import. Must match the sandbox image.
-PACKAGES = ("numpy, pandas, scipy, scikit-learn, pillow, torch (CPU only: there is no GPU, and no internet, "
-            "so no pretrained weights can be downloaded; torchvision is not installed)")
+# Packages the prompt tells the model it may import, with the sandbox image's versions. Must match the image.
+# The scikit-learn notes cover the removed options that wasted most drafts in the pilots (24 Oct: 15 nodes
+# used multi_class, 6 liblinear on 3+ classes, 3 base_estimator or cv='prefit'), since models write older APIs.
+PACKAGES = ("numpy 2.5, pandas 3.0, scipy 1.18, scikit-learn 1.9, pillow 12.3, torch 2.14 (CPU only: there is "
+            "no GPU, and no internet, so no pretrained weights can be downloaded; torchvision is not installed). "
+            "scikit-learn 1.9 removed older options: LogisticRegression has no multi_class argument (lbfgs is "
+            "multinomial already) and solver='liblinear' rejects 3 or more classes; CalibratedClassifierCV takes "
+            "estimator= (not base_estimator=) and no cv='prefit' (wrap a fitted model in "
+            "sklearn.frozen.FrozenEstimator instead)")
 
 # Defaults for the limits stated in the prompt; the controller passes sandbox.cpus and sandbox.memory_gb.
 CPUS = 2
