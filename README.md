@@ -89,7 +89,7 @@ The sandbox image, needed for `sandbox.backend: docker` (the default):
 docker build -t imle-sandbox:latest .
 ```
 
-On a Mac without Docker Desktop, `brew install colima docker`, then `colima start --cpus 2 --memory 5`.
+On a Mac without Docker Desktop, `brew install colima docker`, then `colima start --cpus 2 --memory 5`. Colima mounts only your home folder into its VM, so keep run folders under it (the repo's `runs/` is fine; `/tmp` is not).
 
 Running:
 

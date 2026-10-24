@@ -1,5 +1,6 @@
 import shutil
 import subprocess
+import tempfile
 import time
 import uuid
 from pathlib import Path
@@ -19,6 +20,17 @@ def docker_running() -> bool:
 # The container tests use a small public image, so they run before imle-sandbox is built.
 TEST_IMAGE = "python:3.13-slim"
 needs_docker = pytest.mark.skipif(not docker_running(), reason="no Docker daemon running")
+ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture
+def docker_dir():
+    """A temporary folder inside the repo: Colima's VM mounts the home folder, not pytest's /private/var temp."""
+    base = ROOT / ".pytest_cache" / "docker"
+    base.mkdir(parents=True, exist_ok=True)
+    path = Path(tempfile.mkdtemp(dir=base))
+    yield path
+    shutil.rmtree(path, ignore_errors=True)
 
 
 def option(command: list[str], flag: str) -> list[str]:
@@ -107,9 +119,9 @@ def test_docker_python_execution():
 
 
 @needs_docker
-def test_sandbox_runs_python(tmp_path):
+def test_sandbox_runs_python(docker_dir):
     """run_script runs a script and captures its output."""
-    script = tmp_path / "experiment.py"
+    script = docker_dir / "experiment.py"
     script.write_text(
         "print('Hello from my NLP sandbox!')",
         encoding="utf-8",
@@ -117,7 +129,7 @@ def test_sandbox_runs_python(tmp_path):
 
     result = run_script(
         script_path=str(script),
-        task_dir=str(tmp_path),
+        task_dir=str(docker_dir),
         timeout_s=60,
         image=TEST_IMAGE,
         memory_gb=0.5,
@@ -130,9 +142,9 @@ def test_sandbox_runs_python(tmp_path):
 
 
 @needs_docker
-def test_sandbox_timeout(tmp_path):
+def test_sandbox_timeout(docker_dir):
     """A script past its time limit is killed and reported as timed out."""
-    script = tmp_path / "slow_experiment.py"
+    script = docker_dir / "slow_experiment.py"
     script.write_text(
         "import time\ntime.sleep(60)\n",
         encoding="utf-8",
@@ -140,7 +152,7 @@ def test_sandbox_timeout(tmp_path):
 
     result = run_script(
         script_path=str(script),
-        task_dir=str(tmp_path),
+        task_dir=str(docker_dir),
         timeout_s=5,
         image=TEST_IMAGE,
         memory_gb=0.5,
@@ -151,10 +163,10 @@ def test_sandbox_timeout(tmp_path):
 
 
 @needs_docker
-def test_harness_is_read_only(tmp_path):
+def test_harness_is_read_only(docker_dir):
     """A script cannot change the harness."""
-    task_dir = tmp_path / "task"
-    harness_dir = tmp_path / "harness"
+    task_dir = docker_dir / "task"
+    harness_dir = docker_dir / "harness"
 
     task_dir.mkdir()
     harness_dir.mkdir()
@@ -253,10 +265,10 @@ def test_abandon_running_container():
 
 
 @needs_docker
-def test_sandbox_writes_output(tmp_path):
+def test_sandbox_writes_output(docker_dir):
     """A script can write to /output, and the file lands in the host output folder."""
-    task = tmp_path / "task"
-    output = tmp_path / "output"
+    task = docker_dir / "task"
+    output = docker_dir / "output"
     task.mkdir()
     output.mkdir()
     output.chmod(0o777)  # the container runs as nobody, as DockerSandbox arranges
@@ -286,12 +298,12 @@ def test_sandbox_writes_output(tmp_path):
 
 
 @needs_docker
-def test_memory_limit_kills_instead_of_swapping(tmp_path):
+def test_memory_limit_kills_instead_of_swapping(docker_dir):
     """A script over the memory limit is killed (exit code 137), not slowed down by swap."""
-    script = tmp_path / "hog.py"
+    script = docker_dir / "hog.py"
     script.write_text("x = bytearray(900 * 1024 * 1024)\nprint('survived')\n", encoding="utf-8")
 
-    result = run_script(script_path=str(script), task_dir=str(tmp_path), timeout_s=60, image=TEST_IMAGE,
+    result = run_script(script_path=str(script), task_dir=str(docker_dir), timeout_s=60, image=TEST_IMAGE,
                         memory_gb=0.25)
 
     assert result.exit_code == 137 and "survived" not in result.stdout
