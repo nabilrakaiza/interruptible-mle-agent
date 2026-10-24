@@ -163,6 +163,46 @@ def history(run_dir: Path) -> pd.DataFrame:
                                        "reason", "applied_at", "id"])
 
 
+def history_at(hist: pd.DataFrame, ts: str | None) -> pd.DataFrame:
+    """The history as it stood at time `ts` (a checkpoint's timestamp), for replay.
+
+    Items queued later are dropped, and items handled later show as pending. Idea from
+    Sahi's dashboard (sahi-interaction).
+    """
+    if ts is None or hist.empty:
+        return hist
+    at = pd.Timestamp(ts)
+    at = at.tz_localize("UTC") if at.tzinfo is None else at
+    queued = pd.to_datetime(hist["queued_at"], utc=True, errors="coerce", format="ISO8601")
+    out = hist[queued <= at].copy()
+    later = pd.to_datetime(out["applied_at"], utc=True, errors="coerce", format="ISO8601") > at
+    out.loc[later, ["outcome", "reason", "applied_at"]] = ["pending", "", None]
+    return out
+
+
+NODE_ACTIONS = {  # dashboard label -> (action, params), for one node
+    "Prune it and its subtree": (Action.PRUNE, {}),
+    "Submit it at the end (override)": (Action.OVERRIDE, {}),
+    "Improve it next": (Action.REDIRECT, {"operator": "improve"}),
+    "Debug it next": (Action.REDIRECT, {"operator": "debug"}),
+}
+
+
+def node_actions(status: str, has_script: bool) -> list[str]:
+    """The NODE_ACTIONS labels apply.py would accept for a node in this state, so none is dropped.
+
+    Idea from Sahi's dashboard (sahi-interaction), which lists only eligible targets.
+    """
+    if status == "pruned":
+        return []
+    labels = ["Prune it and its subtree"]
+    if status == "working":
+        labels += ["Submit it at the end (override)", "Improve it next"]
+    if status == "buggy" and has_script:
+        labels.append("Debug it next")
+    return labels
+
+
 def intervention_positions(hist: pd.DataFrame, nodes: pd.DataFrame) -> pd.DataFrame:
     """Applied interventions placed on the node axis: just after the last node finished before they applied."""
     applied = hist[hist["outcome"] == "applied"].copy()

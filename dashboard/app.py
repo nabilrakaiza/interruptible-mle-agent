@@ -108,17 +108,15 @@ def node_tab(run_dir: Path, ck: dict, nodes: pd.DataFrame, best: pd.DataFrame, c
         st.text(files["stdout"] or "(empty stdout)")
         st.text(files["stderr"] or "(empty stderr)")
 
+    choices = monitor.node_actions(n["status"], bool(n["script_path"]))
+    if not choices:
+        st.caption(f"No action applies to a {n['status']} node.")
+        return
     with st.form(f"act::{run_dir}", clear_on_submit=True):
-        choice = st.radio("Action on this node", ["Prune it and its subtree", "Submit it at the end (override)",
-                                                  "Improve it next", "Debug it next"], horizontal=True)
+        choice = st.radio("Action on this node", choices, horizontal=True)
         note = st.text_input("Why (kept for the analysis)")
         if st.form_submit_button("Queue", disabled=not can_act):
-            action, params = {
-                "Prune it and its subtree": (Action.PRUNE, {}),
-                "Submit it at the end (override)": (Action.OVERRIDE, {}),
-                "Improve it next": (Action.REDIRECT, {"operator": "improve"}),
-                "Debug it next": (Action.REDIRECT, {"operator": "debug"}),
-            }[choice]
+            action, params = monitor.NODE_ACTIONS[choice]
             item = monitor.queue_intervention(run_dir, action, node_id, params, note, session=SESSION)
             st.success(f"Queued {item.action.value} on {node_id}. It applies at the next safe point.")
 
@@ -145,7 +143,7 @@ def findings_tab(run_dir: Path, ck: dict, can_act: bool) -> None:
                     st.success("Queued.")
 
 
-def intervene_tab(run_dir: Path, can_act: bool) -> None:
+def intervene_tab(run_dir: Path, hist: pd.DataFrame, can_act: bool) -> None:
     """Run-wide actions (new draft, inject a card, change the budget) and the intervention history."""
     left, mid, right = st.columns(3)
     with left.form(f"draft::{run_dir}", clear_on_submit=True):
@@ -168,7 +166,6 @@ def intervene_tab(run_dir: Path, can_act: bool) -> None:
             st.success("Queued.")
 
     st.subheader("History")
-    hist = monitor.history(run_dir)
     if hist.empty:
         st.caption("No interventions yet.")
     else:
@@ -191,7 +188,10 @@ def view(run_dir: Path, step: int | None, show_test: bool, live: bool) -> None:
     hib = ck["tree"].get("higher_is_better", True)
     best = monitor.best_so_far(nodes, hib)
     header(ck, nodes, best)
-    marks = monitor.intervention_positions(monitor.history(run_dir), nodes)
+    hist = monitor.history(run_dir)
+    if not live:  # replay shows the interventions as they stood at this checkpoint
+        hist = monitor.history_at(hist, ck["status"].get("timestamp"))
+    marks = monitor.intervention_positions(hist, nodes)
     st.altair_chart(score_chart(nodes, best, marks, hib), width="stretch")
     st.caption("Lines: the node the agent would submit now (best by validation) and its probe score. "
                "Points: every node. Dashed lines: applied interventions.")
@@ -206,7 +206,7 @@ def view(run_dir: Path, step: int | None, show_test: bool, live: bool) -> None:
     with findings:
         findings_tab(run_dir, ck, can_act)
     with act:
-        intervene_tab(run_dir, can_act)
+        intervene_tab(run_dir, hist, can_act)
 
 
 with st.sidebar:

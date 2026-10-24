@@ -80,6 +80,34 @@ def test_queue_history_and_positions(tmp_path: Path):
                                                                      ("queue", "override", "n9")]
 
 
+def test_history_at_a_checkpoint_hides_the_future(tmp_path: Path):
+    """In replay, items queued after the checkpoint are hidden and items handled after it are pending."""
+    hist = pd.DataFrame({"queued_at": ["2026-10-24T00:00:30+00:00", "2026-10-24T00:01:30+00:00",
+                                       "2026-10-24T00:03:00+00:00"],
+                         "outcome": ["applied", "applied", "pending"], "reason": ["", "", ""],
+                         "applied_at": ["2026-10-24T00:01:00+00:00", "2026-10-24T00:02:30+00:00", None]})
+    at = monitor.history_at(hist, "2026-10-24T00:02:00+00:00")
+    assert at["outcome"].tolist() == ["applied", "pending"] and pd.isna(at["applied_at"].iloc[1])
+    assert monitor.history_at(hist, None).equals(hist)
+
+
+def test_node_actions_match_what_apply_accepts(tmp_path: Path):
+    """Each offered action is applied, not dropped, for a node in that state; pruned nodes get none."""
+    tree = make_run(tmp_path)
+    tree.add(Node(id="n3", operator=Operator.DRAFT, status=NodeStatus.BUGGY, script_path="s"))
+    tree.add(Node(id="n4", operator=Operator.DRAFT, status=NodeStatus.PRUNED))
+    offered = {}
+    for node in tree.nodes.values():
+        offered[node.id] = monitor.node_actions(node.status.value, bool(node.script_path))
+        for label in offered[node.id]:
+            action, params = monitor.NODE_ACTIONS[label]
+            monitor.queue_intervention(tmp_path, action, node.id, params)
+            [record] = apply_pending(tmp_path, tree.model_copy(deep=True), [], SearchState())
+            assert record.outcome == "applied", (node.id, label, record.reason)
+    assert offered["n2"] == ["Prune it and its subtree"]  # buggy with no script: nothing to debug
+    assert "Debug it next" in offered["n3"] and offered["n4"] == []
+
+
 def test_history_is_empty_without_a_queue(tmp_path: Path):
     """A run nobody intervened on has an empty history with the usual columns."""
     hist = monitor.history(tmp_path)

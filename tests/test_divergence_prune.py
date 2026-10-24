@@ -4,8 +4,11 @@ from pathlib import Path
 import pytest
 
 from imle import checkpoint
+from imle.apply import apply_pending
 from imle.controller import load_config, load_policies
+from imle.intervention import Intervention, append
 from imle.policies import divergence_prune as c4
+from imle.state import SearchState
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -78,6 +81,42 @@ def test_unscored_or_unknown_nodes_are_ignored(tmp_path: Path):
     nodes = DIVERGING + [("n4", IMP, "n2", B, None, None, None)]
     assert c4.decide(tmp_path, ck(make_tree(nodes), "n4")) == []
     assert c4.decide(tmp_path, ck(make_tree(), None)) == []
+
+
+# The next five cases come from Sahi's C4 tests (sahi-interaction), adapted to the shared rule.
+def test_higher_is_better_metrics(tmp_path: Path):
+    """The same divergence on an AUC-like metric, where higher is better, is pruned."""
+    tree = Tree(higher_is_better=True)
+    for nid, parent, val, probe in [("n0", None, 0.80, 0.79), ("n1", "n0", 0.86, 0.76), ("n2", "n1", 0.92, 0.75)]:
+        tree.add(Node(id=nid, operator=IMP if parent else D, parent_id=parent, status=W, val_score=val,
+                      probe_score=probe))
+    [item] = c4.decide(tmp_path, ck(tree, "n2"))
+    assert item["target"] == "n1" and item["params"]["anchor"] == "n0"
+
+
+def test_missing_probe_score_asks_for_nothing(tmp_path: Path):
+    """A node scored on validation only (e.g. a probe scoring failure) is not judged."""
+    nodes = DIVERGING[:2] + [("n2", IMP, "n1", W, 0.40, None, None)]
+    assert c4.decide(tmp_path, ck(make_tree(nodes), "n2")) == []
+
+
+def test_test_scores_are_never_used(tmp_path: Path):
+    """Changing the hidden test scores does not change the decision."""
+    nodes = [(nid, op, parent, status, val, probe, 0.0) for nid, op, parent, status, val, probe, _ in DIVERGING]
+    assert c4.decide(tmp_path, ck(make_tree(nodes), "n2")) == c4.decide(tmp_path, ck(make_tree(), "n2"))
+
+
+def test_prune_goes_through_apply_pending_once(tmp_path: Path):
+    """The queued prune is applied by A5, removes n1's subtree, and the next safe point asks for nothing."""
+    tree = make_tree()
+    for i, action in enumerate(c4.decide(tmp_path, ck(tree, "n2"))):
+        append(tmp_path / "queue.jsonl", Intervention.model_validate(
+            {**action, "id": f"divergence_prune-s1-{i}", "ts": "2026-10-24T00:00:00Z", "source": "divergence_prune"}))
+    [record] = apply_pending(tmp_path, tree, [], SearchState())
+    assert record.outcome == "applied"
+    assert {n.id for n in tree.selectable()} == {"n0", "n3"}
+    assert apply_pending(tmp_path, tree, [], SearchState()) == []
+    assert c4.decide(tmp_path, ck(tree, "n2")) == []
 
 
 def test_bootstrap_share_must_be_consistent(tmp_path: Path, monkeypatch):
