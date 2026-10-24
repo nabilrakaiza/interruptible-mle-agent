@@ -1,0 +1,18 @@
+
+# Small pilot experiment configuration.
+# Override these values on top of configs/base.yaml.
+
+condition: C1
+monitors: []
+
+budget:
+  wall_clock_s: 300
+  script_timeout_s: 60
+  max_nodes: 3
+
+search:
+  policy: greedy
+  num_drafts: 1
+
+llm:
+  temperature: 0.7
