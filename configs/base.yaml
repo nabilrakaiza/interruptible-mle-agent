@@ -1,7 +1,7 @@
 # Shared defaults. Condition files override these.
 budget:
   wall_clock_s: 7200         # 2 hours; extend a finished run with --resume --budget-hours
-  script_timeout_s: 3600
+  script_timeout_s: 1200     # 20 min: a small CNN on 2 CPUs fits; one script cannot eat half a 2-hour run
   max_nodes: 200
 search:
   policy: greedy
