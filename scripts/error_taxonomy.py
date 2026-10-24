@@ -41,14 +41,13 @@ import re
 from collections import Counter
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import yaml
 
 from imle import stand_in_evaluation
-from imle.monitor import md_table
 from imle.controller import KILLED_EXIT_CODES, beats, latest_complete_checkpoint
 from imle.controller import same_predictions as controller_same_predictions
+from imle.monitor import md_table
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]

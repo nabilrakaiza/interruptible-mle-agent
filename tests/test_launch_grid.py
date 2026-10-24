@@ -1,6 +1,7 @@
 import argparse
 import importlib.util
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -37,24 +38,38 @@ def test_shards_split_the_grid_by_position():
         launch_grid.parse_shard("3/3")
 
 
-def test_conditions_without_a_policy_are_blocked():
-    """C5's policy has no decide() yet, so it is blocked; C1 and C4 are not."""
+def no_decide_policy(monkeypatch, conditions: Path) -> Path:
+    """A condition whose listed policy module has no decide(), like C5 before role 3's code.
+
+    The config goes in `conditions`, with base.yaml next to that folder as load_config expects.
+    """
+    monkeypatch.setitem(sys.modules, "imle.policies.unwritten", types.ModuleType("imle.policies.unwritten"))
+    conditions.mkdir(exist_ok=True)
+    (conditions.parent / "base.yaml").write_text((ROOT / "configs" / "base.yaml").read_text())
+    config = conditions / "c9_unwritten.yaml"
+    config.write_text("condition: C9\nmonitors: [unwritten]\n")
+    return config
+
+
+def test_conditions_without_a_policy_are_blocked(monkeypatch, tmp_path: Path):
+    """A policy with no decide() blocks its condition; C1, C4 and C5 can all run."""
     conditions = ROOT / "configs" / "conditions"
-    assert launch_grid.blocked(conditions / "c1_autonomous.yaml") is None
-    assert launch_grid.blocked(conditions / "c4_divergence_prune.yaml") is None
-    assert "finding_correction.decide is not implemented yet" in launch_grid.blocked(
-        conditions / "c5_finding_correction.yaml")
+    for name in ("c1_autonomous.yaml", "c4_divergence_prune.yaml", "c5_finding_correction.yaml"):
+        assert launch_grid.blocked(conditions / name) is None
+    assert "unwritten.decide is not implemented yet" in launch_grid.blocked(
+        no_decide_policy(monkeypatch, tmp_path / "conditions"))
 
 
 def test_status_and_dry_run(tmp_path: Path, monkeypatch, capsys):
     """--status counts finished runs as done; --dry-run lists only runs that still need running."""
     (tmp_path / "conditions").mkdir()
-    for name in ("c1_autonomous.yaml", "c5_finding_correction.yaml"):
-        (tmp_path / "conditions" / name).write_text((ROOT / "configs" / "conditions" / name).read_text())
+    (tmp_path / "conditions" / "c1_autonomous.yaml").write_text(
+        (ROOT / "configs" / "conditions" / "c1_autonomous.yaml").read_text())
+    no_decide_policy(monkeypatch, tmp_path / "conditions")
     (tmp_path / "base.yaml").write_text((ROOT / "configs" / "base.yaml").read_text())
     (tmp_path / "schedule.yaml").write_text(
         "defaults: {budget_hours: 1, runs_root: grid}\ntasks: [a, b]\n"
-        "blocks: [{config: c1_autonomous.yaml, seeds: [0]}, {config: c5_finding_correction.yaml, seeds: [0]}]\n")
+        "blocks: [{config: c1_autonomous.yaml, seeds: [0]}, {config: c9_unwritten.yaml, seeds: [0]}]\n")
     done = tmp_path / "grid" / "C1_a_seed0"
     checkpoint.write(done, 5, {"nodes": {}}, [], {"done": True})
     (done / "config.yaml").write_text("budget: {wall_clock_s: 3600}\n")
@@ -69,4 +84,4 @@ def test_status_and_dry_run(tmp_path: Path, monkeypatch, capsys):
     launch_grid.main()
     out = capsys.readouterr().out
     assert "[1] C1_b_seed0" in out and "--sandbox subprocess" in out and "--budget-hours 1.0" in out
-    assert "C1_a_seed0:" not in out and "skip C5_a_seed0: blocked" in out
+    assert "C1_a_seed0:" not in out and "skip C9_a_seed0: blocked" in out

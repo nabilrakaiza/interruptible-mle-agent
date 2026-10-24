@@ -26,6 +26,10 @@ agents:
   evaluation: true
   retrieval: true
   reflection: true
+reflection:                  # A4, used when agents.reflection is true
+  every_n: 10                # finished nodes between phase boundaries, after the first num_drafts
+  max_findings: 10           # findings kept (newest); each call adds at most 3
+  max_retries: 2             # extra attempts when A4's reply is not valid JSON
 retrieval:                   # A2, used when agents.retrieval is true
   source: web                # web: cards written from allowlisted docs | static: hand-written cards only
   cache_dir: data/retrieval_cache  # fetched pages, shared by runs so every run reads the same text

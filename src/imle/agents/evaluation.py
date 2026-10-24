@@ -244,7 +244,7 @@ class SelfReportScoring:
             probe = data_layer.metric(joined[joined.split == "probe"], meta)
             test = data_layer.metric(joined[joined.split == "test"], meta)
             # The stand-in's own submission writer, so the file is in MLE-bench's format (interface request 2).
-            data_layer._submission(joined, meta, node_dir.parent.parent / HARNESS_DIR).to_csv(
+            data_layer.submission(joined, meta, node_dir.parent.parent / HARNESS_DIR).to_csv(
                 node_dir / "submission.csv", index=False)
         except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as e:
             return _error(str(e)[:500])

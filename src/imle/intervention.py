@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,15 +39,15 @@ class Intervention(BaseModel):
     ts: str
     source: str                      # "human" or a policy name
     action: Action
-    target: Optional[str] = None
+    target: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class AppliedRecord(BaseModel):
     intervention: Intervention
     outcome: str                     # "applied" or "dropped"
-    reason: Optional[str] = None
+    reason: str | None = None
     applied_at: str
 
 

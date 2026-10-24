@@ -371,8 +371,8 @@ def metric(part: pd.DataFrame, meta: dict) -> float:
     return float(np.mean([root_mean_squared_log_error(part[f"{t}_x"], part[f"{t}_y"]) for t in targets]))
 
 
-def _submission(joined: pd.DataFrame, meta: dict, harness: Path) -> pd.DataFrame:
-    """The test rows in MLE-bench's submission format and row order."""
+def submission(joined: pd.DataFrame, meta: dict, harness: Path) -> pd.DataFrame:
+    """The test rows in MLE-bench's submission format and row order. Also used by A1-off scoring."""
     test = joined[joined.split == "test"].sort_values("position")
     targets = meta["targets"]
     if meta["task"] == "detecting-insults-in-social-commentary":
@@ -441,5 +441,5 @@ def score(node_dir: Path) -> SimpleNamespace:
         scores = {s: metric(joined[joined.split == s], meta) for s in ("val", "probe", "test")}
     except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as e:
         return _result(error=str(e)[:500])
-    _submission(joined, meta, harness).to_csv(node_dir / "submission.csv", index=False)
+    submission(joined, meta, harness).to_csv(node_dir / "submission.csv", index=False)
     return _result(scores["val"], scores["probe"], scores["test"])

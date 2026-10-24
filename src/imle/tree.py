@@ -7,7 +7,6 @@ by the controller (A5).
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,17 +27,17 @@ class NodeStatus(str, Enum):
 
 class Node(BaseModel):
     id: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     operator: Operator
     plan: str = ""
     script_path: str = ""
     status: NodeStatus = NodeStatus.RUNNING
-    val_score: Optional[float] = None
-    probe_score: Optional[float] = None   # hidden from the agent, shown to monitors
-    test_score: Optional[float] = None    # graded for analysis, never shown to any agent
-    error: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    val_score: float | None = None
+    probe_score: float | None = None   # hidden from the agent, shown to monitors
+    test_score: float | None = None    # graded for analysis, never shown to any agent
+    error: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class Tree(BaseModel):
@@ -66,7 +65,7 @@ class Tree(BaseModel):
     def selectable(self) -> list[Node]:
         return [n for n in self.nodes.values() if n.status == NodeStatus.WORKING]
 
-    def best_by_val(self) -> Optional[Node]:
+    def best_by_val(self) -> Node | None:
         cands = [n for n in self.selectable() if n.val_score is not None]
         if not cands:
             return None
