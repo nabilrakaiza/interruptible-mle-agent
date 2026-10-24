@@ -1,0 +1,24 @@
+# The experiment grid, in run order (docs/plan.md: C1, C4, C5, A1-off, A4-off).
+# scripts/launch_grid.py reads it: each machine takes every N-th run with --shard i/N,
+# so all machines work down the list by importance at the same time.
+
+defaults:
+  budget_hours: 2            # matches budget.wall_clock_s in base.yaml; 4 in the proposal
+  sandbox: docker            # subprocess on Colab and Kaggle (no Docker there)
+  evaluator: stand_in        # until role 3's A1 exists
+  runs_root: runs/grid       # apart from the pilots in runs/, whose folder names could collide
+
+tasks:
+  - spooky-author-identification
+  - detecting-insults-in-social-commentary
+  - random-acts-of-pizza
+  - nomad2018-predict-transparent-conductors
+  - aerial-cactus-identification
+  - leaf-classification
+
+blocks:
+  - {config: c1_autonomous.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: c4_divergence_prune.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: c5_finding_correction.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: ablation_a1_off.yaml, seeds: [0, 1, 2]}
+  - {config: ablation_a4_off.yaml, seeds: [0, 1, 2]}
