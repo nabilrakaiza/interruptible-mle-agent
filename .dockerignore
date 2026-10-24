@@ -1,0 +1,3 @@
+# The image needs only the requirements file; keep runs/, data/ and .venv out of the build context.
+*
+!docker-requirements.txt

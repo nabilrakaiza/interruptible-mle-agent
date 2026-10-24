@@ -1,8 +1,85 @@
-
+import shutil
 import subprocess
+import time
+import uuid
+from pathlib import Path
+
+import pytest
+
+from imle.sandbox import abandon_experiment, docker_command, run_script
 
 
+def docker_running() -> bool:
+    """Whether a Docker daemon answers (Colima or Docker Desktop started)."""
+    if shutil.which("docker") is None:
+        return False
+    return subprocess.run(["docker", "info"], capture_output=True, timeout=30, check=False).returncode == 0
+
+
+# The container tests use a small public image, so they run before imle-sandbox is built.
+TEST_IMAGE = "python:3.13-slim"
+needs_docker = pytest.mark.skipif(not docker_running(), reason="no Docker daemon running")
+
+
+def option(command: list[str], flag: str) -> list[str]:
+    """Every value given to `flag` in a docker command."""
+    return [command[i + 1] for i, part in enumerate(command) if part == flag]
+
+
+def test_docker_command_sets_the_configured_limits(tmp_path: Path):
+    """Memory and swap are equal, CPUs and /tmp follow the arguments, and threads are capped at the CPU count."""
+    cmd = docker_command(tmp_path / "n3.py", tmp_path, "imle-x", "img", output=tmp_path / "out", cpus=2,
+                         memory_gb=3.5, tmp_gb=1)
+    assert option(cmd, "--memory") == option(cmd, "--memory-swap") == ["3584m"]
+    assert option(cmd, "--cpus") == ["2"] and option(cmd, "--network") == ["none"]
+    assert "/tmp:rw,noexec,nosuid,size=1024m" in option(cmd, "--tmpfs")
+    env = option(cmd, "--env")
+    assert "OMP_NUM_THREADS=2" in env and "LOKY_MAX_CPU_COUNT=2" in env and "CUDA_VISIBLE_DEVICES=" in env
+    assert f"type=bind,src={tmp_path / 'out'},dst=/output" in option(cmd, "--mount")
+    assert cmd[-3:] == ["img", "python", "n3.py"] and "--read-only" in cmd
+
+
+def test_docker_command_mounts_the_harness_read_only(tmp_path: Path):
+    """A harness folder is mounted read-only at /harness; without one there is no such mount."""
+    cmd = docker_command(tmp_path / "s.py", tmp_path / "task", "imle-x", harness=tmp_path / "h")
+    assert f"type=bind,src={tmp_path / 'h'},dst=/harness,readonly" in option(cmd, "--mount")
+    assert not any("/harness" in m for m in option(docker_command(tmp_path / "s.py", tmp_path, "imle-x"), "--mount"))
+
+
+def test_abandon_rejects_invalid_container():
+    """Only containers this sandbox started (named imle-...) can be removed."""
+    with pytest.raises(ValueError):
+        abandon_experiment("unrelated-container")
+
+
+def test_output_inside_task_rejected(tmp_path):
+    """An output folder inside the task folder is refused, and not created."""
+    task = tmp_path / "task"
+    task.mkdir()
+
+    script = task / "experiment.py"
+    script.write_text(
+        "print('Hello')",
+        encoding="utf-8",
+    )
+
+    invalid_output = task / "output"
+
+    with pytest.raises(ValueError):
+        run_script(
+            script_path=str(script),
+            task_dir=str(task),
+            output_dir=str(invalid_output),
+            timeout_s=30,
+        )
+
+    # Invalid output directory must not be created.
+    assert not invalid_output.exists()
+
+
+@needs_docker
 def test_docker_python_execution():
+    """A locked-down container can run Python at all."""
     result = subprocess.run(
         [
             "docker",
@@ -15,13 +92,13 @@ def test_docker_python_execution():
             "--pids-limit", "64",
             "--memory", "256m",
             "--cpus", "1",
-            "python:3.11-slim",
+            TEST_IMAGE,
             "python", "-c",
             "print('Sandbox test successful!')",
         ],
         capture_output=True,
         text=True,
-        timeout=120,
+        timeout=300,
         check=False,
     )
 
@@ -29,10 +106,9 @@ def test_docker_python_execution():
     assert "Sandbox test successful!" in result.stdout
 
 
-from imle.sandbox import run_script
-
-
+@needs_docker
 def test_sandbox_runs_python(tmp_path):
+    """run_script runs a script and captures its output."""
     script = tmp_path / "experiment.py"
     script.write_text(
         "print('Hello from my NLP sandbox!')",
@@ -42,15 +118,20 @@ def test_sandbox_runs_python(tmp_path):
     result = run_script(
         script_path=str(script),
         task_dir=str(tmp_path),
-        timeout_s=30,
+        timeout_s=60,
+        image=TEST_IMAGE,
+        memory_gb=0.5,
     )
 
-    assert result.exit_code == 0
+    assert result.exit_code == 0, result.stderr
     assert result.timed_out is False
     assert "Hello from my NLP sandbox!" in result.stdout
     assert result.wall_time_s >= 0
 
+
+@needs_docker
 def test_sandbox_timeout(tmp_path):
+    """A script past its time limit is killed and reported as timed out."""
     script = tmp_path / "slow_experiment.py"
     script.write_text(
         "import time\ntime.sleep(60)\n",
@@ -61,21 +142,17 @@ def test_sandbox_timeout(tmp_path):
         script_path=str(script),
         task_dir=str(tmp_path),
         timeout_s=5,
+        image=TEST_IMAGE,
+        memory_gb=0.5,
     )
 
     assert result.timed_out is True
     assert result.exit_code == -1
-from imle.sandbox import abandon_experiment
 
 
-def test_abandon_rejects_invalid_container():
-    import pytest
-
-    with pytest.raises(ValueError):
-        abandon_experiment("unrelated-container")
-
-
+@needs_docker
 def test_harness_is_read_only(tmp_path):
+    """A script cannot change the harness."""
     task_dir = tmp_path / "task"
     harness_dir = tmp_path / "harness"
 
@@ -108,7 +185,9 @@ except OSError:
         script_path=str(script),
         task_dir=str(task_dir),
         harness_dir=str(harness_dir),
-        timeout_s=30,
+        timeout_s=60,
+        image=TEST_IMAGE,
+        memory_gb=0.5,
     )
 
     assert result.exit_code == 0, result.stderr
@@ -116,14 +195,9 @@ except OSError:
     assert protected_file.read_text(encoding="utf-8") == "SCORE = 100\n"
 
 
-import subprocess
-import time
-import uuid
-
-from imle.sandbox import abandon_experiment
-
-
+@needs_docker
 def test_abandon_running_container():
+    """abandon_experiment removes a running sandbox container."""
     container_name = f"imle-{uuid.uuid4().hex}"
 
     # Start a long-running test container.
@@ -137,13 +211,13 @@ def test_abandon_running_container():
             "--security-opt", "no-new-privileges",
             "--memory", "256m",
             "--cpus", "1",
-            "python:3.11-slim",
+            TEST_IMAGE,
             "python", "-c",
             "import time; time.sleep(60)",
         ],
         capture_output=True,
         text=True,
-        timeout=30,
+        timeout=300,
         check=True,
     )
 
@@ -177,10 +251,15 @@ def test_abandon_running_container():
             check=False,
         )
 
+
+@needs_docker
 def test_sandbox_writes_output(tmp_path):
+    """A script can write to /output, and the file lands in the host output folder."""
     task = tmp_path / "task"
     output = tmp_path / "output"
     task.mkdir()
+    output.mkdir()
+    output.chmod(0o777)  # the container runs as nobody, as DockerSandbox arranges
 
     script = task / "experiment.py"
     script.write_text(
@@ -194,7 +273,9 @@ def test_sandbox_writes_output(tmp_path):
         script_path=str(script),
         task_dir=str(task),
         output_dir=str(output),
-        timeout_s=30,
+        timeout_s=60,
+        image=TEST_IMAGE,
+        memory_gb=0.5,
     )
 
     assert result.exit_code == 0, result.stderr
@@ -204,28 +285,13 @@ def test_sandbox_writes_output(tmp_path):
     ).read_text(encoding="utf-8") == "prediction\n1\n0\n"
 
 
-import pytest
+@needs_docker
+def test_memory_limit_kills_instead_of_swapping(tmp_path):
+    """A script over the memory limit is killed (exit code 137), not slowed down by swap."""
+    script = tmp_path / "hog.py"
+    script.write_text("x = bytearray(900 * 1024 * 1024)\nprint('survived')\n", encoding="utf-8")
 
+    result = run_script(script_path=str(script), task_dir=str(tmp_path), timeout_s=60, image=TEST_IMAGE,
+                        memory_gb=0.25)
 
-def test_output_inside_task_rejected(tmp_path):
-    task = tmp_path / "task"
-    task.mkdir()
-
-    script = task / "experiment.py"
-    script.write_text(
-        "print('Hello')",
-        encoding="utf-8",
-    )
-
-    invalid_output = task / "output"
-
-    with pytest.raises(ValueError):
-        run_script(
-            script_path=str(script),
-            task_dir=str(task),
-            output_dir=str(invalid_output),
-            timeout_s=30,
-        )
-
-    # Invalid output directory must not be created.
-    assert not invalid_output.exists()
+    assert result.exit_code == 137 and "survived" not in result.stdout

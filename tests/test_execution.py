@@ -20,6 +20,8 @@ def test_docker_sandbox_calls_role_1_run_script(tmp_path: Path, monkeypatch):
         "timeout_s": 13,
         "image": "my-image",
         "output_dir": str(output),
+        "cpus": 2,
+        "memory_gb": 4,
     }]
     assert output.stat().st_mode & 0o777 == 0o777
     assert sandbox.output_path(output) == "/output"
@@ -49,7 +51,8 @@ def test_make_sandbox():
     """The backend comes from the argument, then the config, then defaults to Docker."""
     assert isinstance(make_sandbox({}), DockerSandbox)
     assert isinstance(make_sandbox({"sandbox": {"backend": "subprocess"}}), SubprocessSandbox)
-    assert make_sandbox({"sandbox": {"image": "x"}}).image == "x"
+    docker = make_sandbox({"sandbox": {"image": "x", "cpus": 3, "memory_gb": 5}})
+    assert (docker.image, docker.cpus, docker.memory_gb) == ("x", 3, 5)
     assert isinstance(make_sandbox({"sandbox": {"backend": "docker"}}, "subprocess"), SubprocessSandbox)
     with pytest.raises(ValueError):
         make_sandbox({}, "vm")

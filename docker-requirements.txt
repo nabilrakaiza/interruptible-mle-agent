@@ -1,0 +1,8 @@
+# Packages in the sandbox image, pinned to the versions role 2 tests with.
+# torch is installed separately in the Dockerfile from PyTorch's CPU-only index
+# (the default Linux wheel pulls in about 2 GB of CUDA libraries).
+numpy==2.5.4
+pandas==3.0.6
+scipy==1.18.1
+scikit-learn==1.9.1
+pillow==12.3.0
