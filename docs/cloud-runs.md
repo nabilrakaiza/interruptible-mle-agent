@@ -40,9 +40,9 @@ One command, run again after any interruption, always continues the same run.
 
 1. Open the notebook and edit only the **Settings** cell:
    - condition file, task, seed, provider;
-   - `BRANCH`: use `nabil-coreagent` until PR #2 is merged;
+   - `BRANCH`: the branch to run, `main` once `combined-agent` is merged;
    - `SMOKE`.
-2. Keep `SMOKE = True` (the toy task) until role 3's evaluator exists. `DRY_RUN = True` needs no API key at all.
+2. `SMOKE = True` runs the toy task instead of a real one, as a quick check. `DRY_RUN = True` needs no API key at all.
 3. **Colab:** *Run all*, and keep the tab active. After a disconnect, reconnect and *Run all* again.
 4. **Kaggle:** *Save Version → Save & Run All*. If a run was cut off:
    - start a new version;

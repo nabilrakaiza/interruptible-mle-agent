@@ -1,8 +1,9 @@
-"""Stand-in A1 for the six MLE-bench tasks, until role 3's `agents/evaluation.py` exists.
+"""The data layer for the six MLE-bench tasks: splits, metrics and submissions.
 
-Temporary, written by role 2 so real runs can start. It has the same `prepare` and
-`score` functions the controller expects from A1 (docs/core-agent-assumptions.md), and
-no leakage screen. Choose it with `python -m imle.controller --evaluator stand_in`.
+Written by role 2 as a stand-in A1 so real runs could start before role 3's. Role 3's
+`agents/evaluation.py` now builds on it: A1 calls `prepare` and `score` here and adds the
+frozen harness and the leakage screen. On its own (`python -m imle.controller --evaluator
+stand_in`) it scores the same rows, with no harness check or screen.
 
 It reads the data MLE-bench prepared (`mlebench prepare -c <task>`) from
 $MLEBENCH_DATA_DIR, by default MLE-bench's cache folder, and for each run writes:
