@@ -139,13 +139,15 @@ python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
 - On Colab and Kaggle, use `--sandbox subprocess` and the notebooks in `notebooks/` (`docs/cloud-runs.md`).
 - `cloud_run.py` wraps `python -m imle.controller` and retries after crashes; the controller can also be called directly.
 
-**4. The experiment grid.** `configs/schedule.yaml` holds the half plan: 78 runs of 2 hours. Each machine takes one shard, and running the same command again resumes it:
+**4. The experiment grid.** `configs/schedule.yaml` holds the half plan for the slides (`docs/experiments.md`): four tasks, 13 runs of 2 hours each, and each person runs one task on their own machine. Running the same command again resumes it:
 
 ```bash
-python scripts/launch_grid.py --status            # done, unfinished and to do, for the whole grid
-python scripts/launch_grid.py --shard 0/3 --dry-run   # what machine 0 of 3 would run
-python scripts/launch_grid.py --shard 0/3         # run it (machines 1/3 and 2/3 likewise)
+python scripts/launch_grid.py --status                         # the whole grid: done, unfinished, to do
+python scripts/launch_grid.py --only <task> --dry-run          # the runs for your task, without starting them
+python scripts/launch_grid.py --only <task>                    # run them
 ```
+
+`--shard i/N` instead splits the whole grid across N machines by position.
 
 **5. Watch and intervene.** Open the dashboard in another terminal, while a run goes or afterwards:
 

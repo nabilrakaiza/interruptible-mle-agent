@@ -10,33 +10,37 @@ Role 4. C6 sessions are a few runs where a person watches the dashboard and inte
 
 ## Setup
 
-- **Participant:** a group member who has not seen that run before. One participant per session. An observer takes notes; the participant does not touch the terminal.
+**Half plan (25 Oct): each person runs one session, alone, on their own task** (`docs/experiments.md`). The same person watches, intervenes and writes the notes, with no separate observer. Four sessions in total, one each on spooky, nomad, cactus and leaf.
+
+- **Participant:** the person who owns the task. They have seen that task's other runs, which the write-up must state; they have not seen this run.
 - **Run:** condition `c6_live.yaml` (monitors: `human`), a 2-hour budget, the same model and evaluator as the C1 runs.
-  - Tasks: `spooky-author-identification` and `leaf-classification`. Spooky's probe split is large (about 1,760 rows), so its signal is reliable. Leaf's is small (about 90 rows) and showed validation overfitting in the MiniMax pilot.
-  - Seed: 100 and up, so the run never coincides with a C1 seed.
+  - Task: your own. Spooky's probe split is large (about 1,760 rows), so its signal is reliable. Nomad's (216 rows) and leaf's (about 90) are small, so a single node's probe score is noisy; look at the trend. Leaf showed validation overfitting in the MiniMax pilot.
+  - Seed: 100, so the run never coincides with a grid seed.
+  - When: between two grid runs on your machine (the grid and a C6 run should not run at the same time on an 8 GB machine), at a time you can watch for the full 2 hours.
 - **Start the run:**
 
   ```bash
   python scripts/cloud_run.py --config configs/conditions/c6_live.yaml \
-      --task spooky-author-identification --seed 100 --budget-hours 2
-  streamlit run dashboard/app.py
+      --task <your task> --seed 100 --budget-hours 2 --sandbox docker
+  streamlit run dashboard/app.py      # in a second terminal
   ```
 
 - **Dashboard:** Live view, test scores off (the toggle is disabled until the run finishes). Start the session (open the page) after the agent's drafts are done, about 10 to 20 minutes in, so there is something to look at.
 
 ## During the session
 
-**Brief the participant (read aloud):**
+**Brief (read it to yourself before starting, or aloud if someone is with you):**
 
 > The agent searches for a good model. Each point is one attempt. Blue is the score it optimises (validation); orange is a held-out probe the agent never sees. You can prune a branch, choose the final submission, steer the next attempt, add an idea, or fix one of its notes. Changes apply after the current attempt finishes. Please say what you are looking at and why, as you go. You do not have to intervene.
 
 **Rules:**
 
-- The participant acts only through the dashboard.
-- The observer only prompts for speech ("what are you looking at?") and does not suggest actions.
+- Act only through the dashboard; do not touch the run folder or the terminal running the agent.
+- Do not open the run's test scores or other people's runs on the same task during the session.
+- Think aloud by writing: note what you look at and why, as you go, even when you do not act. Without an observer, the notes are the only record of why you acted.
 - Breaks are fine. The run does not pause (`intervention-protocol.md`, rule 5).
 
-**The observer's notes,** one line per moment, in `runs/<run>/c6_notes.md`:
+**Your notes,** one line per moment, in `runs/<run>/c6_notes.md`:
 
 | Time | Node on screen | What they said | What they did |
 |---|---|---|---|
@@ -50,7 +54,7 @@ Role 4. C6 sessions are a few runs where a person watches the dashboard and inte
 
 ## After the session
 
-1. **Debrief (5 minutes):**
+1. **Debrief (5 minutes, written into `c6_notes.md`):**
    - What made you intervene?
    - What did you ignore on purpose?
    - What would you have wanted to see?
@@ -93,7 +97,7 @@ After the sessions:
 - If people pruned **earlier** than the rule (after one node, or on a flat probe rather than a falling one), lower `min_steps` or `min_probe_loss`.
 - If they **ignored** divergences the rule acts on, raise them.
 
-Freeze the thresholds before the C4 runs start: changing them halfway splits C4 into two conditions. Hand C5 cues (findings people corrected and why) to role 3.
+Freeze the thresholds before the C4 runs start: changing them halfway splits C4 into two conditions. In the half plan the sessions run alongside the grid, so the C4 and C5 thresholds stay as set from the pilots; the sessions feed the write-up (where the rule and people agree or not), and any change waits for the full plan. Hand C5 cues (findings people corrected and why) to role 3.
 
 ## Write-up (report)
 
@@ -106,4 +110,4 @@ Freeze the thresholds before the C4 runs start: changing them halfway splits C4 
   python scripts/trajectory.py runs/C6_<task>_seed100
   ```
 
-- **Limitations:** few sessions; participants from the group, who know how the agent works; one model.
+- **Limitations:** four sessions, one per task; participants from the group, who know how the agent works and had seen other runs on their task; no separate observer, so think-aloud is self-reported in writing; one model.

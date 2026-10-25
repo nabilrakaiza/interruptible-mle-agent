@@ -6,7 +6,7 @@ We are behind: the first milestone (baseline agent and a pilot C1 run) was due 1
 
 Assumes the earliest presentation slot (29 Oct). A later slot becomes buffer.
 
-**Update 25 Oct:** runs start late, so the half plan in `docs/experiments.md` runs first, for the slide submission: 2-hour runs, 3 seeds for C1/C4/C5 and 2 for the ablations (78 runs, about 156 machine-hours). The remaining seeds follow if time allows.
+**Update 25 Oct:** runs start late, so the half plan in `docs/experiments.md` runs first, for the slide submission: four tasks (spooky, nomad, cactus, leaf), one person per task, 2-hour runs, 3 seeds for C1/C4/C5 and 2 for the ablations, and one C6 session per person on their own task. That is 52 runs plus 4 sessions, about 28 machine-hours per person. The two other tasks and the remaining seeds follow if time allows.
 
 ## How we build
 
