@@ -38,15 +38,19 @@ The proposal's plan:
 
 | Task | Modality | Person |
 |---|---|---|
-| `spooky-author-identification` | text | to assign |
+| `spooky-author-identification` | text | Nabil |
 | `nomad2018-predict-transparent-conductors` | tabular regression | to assign |
 | `aerial-cactus-identification` | image | to assign |
 | `leaf-classification` | image, with tabular features | to assign |
 
 ```bash
 python scripts/launch_grid.py --only <task> --status   # this task's 13 runs: done, unfinished, to do
-python scripts/launch_grid.py --only <task>            # run them in order (C1, C4, C5, A1-off, A4-off); rerun to resume
+python scripts/launch_grid.py --only <task> --seed 0   # night 1: seed 0 of C1, C4, C5, A1-off, A4-off (5 runs, about 10 h)
+python scripts/launch_grid.py --only <task> --seed 1   # night 2: seed 1 of all five (5 runs, about 10 h)
+python scripts/launch_grid.py --only <task> --seed 2   # seed 2 of C1, C4, C5 (3 runs, about 6 h)
 ```
+
+Go seed by seed, not condition by condition: after each night every condition has the same number of seeds, so a comparison is possible at any point. Without `--seed`, the launcher runs all of C1 before any C4. Rerunning a command resumes it, and a run cut off midway continues where it stopped. Each run takes about 2 hours and 2 minutes.
 
 Each person's 13 runs take about 26 hours back to back, plus 2 hours for the C6 session, so a machine must run nearly non-stop until 28 Oct. Keep the laptop plugged in, awake (`caffeinate -i -s` on a Mac) and open.
 
