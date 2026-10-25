@@ -107,22 +107,67 @@ docker build -t imle-sandbox:latest .
 
 On a Mac without Docker Desktop, `brew install colima docker`, then `colima start --cpus 2 --memory 5`. Colima mounts only your home folder into its VM, so keep run folders under it (the repo's `runs/` is fine; `/tmp` is not).
 
-Running:
+## Running the agent
+
+Run these from the repository root with the venv active. Start Docker (or Colima) first, unless you pass `--sandbox subprocess`.
+
+**1. Check the install, with no key, data or Docker.** This runs the controller on a toy task with canned LLM replies, in a few seconds:
 
 ```bash
-# one run (starts, or resumes if it was cut off)
+python scripts/smoke_run.py --dry-run
+```
+
+**2. A free test run on a real task.** Every agent is on and the free Nemotron model is used, so a 2-hour run costs nothing. It checks the key, the data, Docker and grading together:
+
+```bash
+python scripts/cloud_run.py --config configs/conditions/test_free.yaml \
+    --task spooky-author-identification --seed 0 --budget-hours 2 \
+    --sandbox docker --runs-root runs/test
+```
+
+Use `--budget-hours 0.25` for a quick check. OpenRouter caps free-model requests per day, and a 2-hour run makes about 70 to 110 requests.
+
+**3. One experiment run.** This uses DeepSeek V4 Flash and costs a few cents. Any file in `configs/conditions/` works: `c1_autonomous`, `c4_divergence_prune`, `c5_finding_correction`, `ablation_a1_off`, `ablation_a4_off`, or `c6_live` for a C6 session (`docs/c6-protocol.md`).
+
+```bash
 python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
     --task spooky-author-identification --seed 0 --sandbox docker
+```
 
-# the experiment grid (configs/schedule.yaml), split over N machines; run again to resume
-python scripts/launch_grid.py --status
-python scripts/launch_grid.py --shard 0/3
+- The run goes to `runs/<condition>_<task>_seed<seed>/` (or under `--runs-root`).
+- Running the same command again resumes a run that was cut off. A finished run is skipped, or, with a larger `--budget-hours`, continued.
+- On Colab and Kaggle, use `--sandbox subprocess` and the notebooks in `notebooks/` (`docs/cloud-runs.md`).
+- `cloud_run.py` wraps `python -m imle.controller` and retries after crashes; the controller can also be called directly.
 
-# watch and intervene
+**4. The experiment grid.** `configs/schedule.yaml` holds the half plan: 78 runs of 2 hours. Each machine takes one shard, and running the same command again resumes it:
+
+```bash
+python scripts/launch_grid.py --status            # done, unfinished and to do, for the whole grid
+python scripts/launch_grid.py --shard 0/3 --dry-run   # what machine 0 of 3 would run
+python scripts/launch_grid.py --shard 0/3         # run it (machines 1/3 and 2/3 likewise)
+```
+
+**5. Watch and intervene.** Open the dashboard in another terminal, while a run goes or afterwards:
+
+```bash
 streamlit run dashboard/app.py
 ```
 
-Analysis, from saved run folders only:
+In Live mode, the chart, tree and findings refresh every 5 seconds, and queued actions apply at the agent's next safe point. Replay mode steps through the checkpoints of any run. Test scores show only for finished runs.
+
+**What a run leaves behind.** Everything is in the run folder, and every analysis script reads only that:
+
+```
+runs/<run>/
+  config.yaml          the merged settings the run used
+  checkpoints/<step>/  tree.json, findings.json, status.json (status.final_node is the submitted node)
+  nodes/<node>/        solution.py, stdout and stderr, output/predictions.csv, submission.csv
+  llm_calls.jsonl      every LLM call with tokens and cost
+  queue.jsonl, applied.jsonl   interventions queued, and what happened to each
+  grade.json           MLE-bench's grade of the final submission, after scripts/grade.py
+```
+
+**6. Analysis.** These scripts read saved run folders only:
 
 ```bash
 python scripts/grade.py runs/grid               # MLE-bench grades into each run's grade.json
@@ -132,6 +177,10 @@ python scripts/interaction_cost.py runs/grid    # interventions, timing, human t
 python scripts/replay_policy.py runs/grid       # where C4's rule would have pruned in other runs
 python scripts/error_taxonomy.py runs/grid
 python scripts/trajectory.py runs/grid/<run>
+python scripts/analyze_val_test_gap.py --runs-dir runs/grid     # validation-test gap per node, run and condition
+python scripts/analyze_probe_fidelity.py --runs-dir runs/grid   # probe-test agreement
+python scripts/finding_accuracy.py runs/grid/*                  # A4 findings: unsupported and replicated
+python scripts/leakage_stress_test.py --execute                 # A1's leakage screen on planted leaks
 ```
 
 ## Experimental conditions

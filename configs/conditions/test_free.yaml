@@ -1,0 +1,8 @@
+# Free test run, not an experiment condition: C1 (every agent on, no monitor) with the free
+# Nemotron model, to check a machine's setup at no cost. Results are not comparable with the grid,
+# which uses DeepSeek V4 Flash.
+condition: TEST
+monitors: []
+llm:
+  model: nvidia/nemotron-3-ultra-550b-a55b:free
+  routing: null              # base.yaml's fp8 routing excludes the free endpoint
