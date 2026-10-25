@@ -1,4 +1,7 @@
 # The experiment grid, in run order (docs/plan.md: C1, C4, C5, A1-off, A4-off).
+# Half plan first, for the slide submission (docs/experiments.md): 2-hour runs and about half
+# the seeds, 78 runs. For the full plan, extend the seed lists to [0, 1, 2, 3, 4] and [0, 1, 2];
+# the launcher skips the runs already done and only adds the new seeds.
 # scripts/launch_grid.py reads it: each machine takes every N-th run with --shard i/N,
 # so all machines work down the list by importance at the same time.
 
@@ -17,8 +20,8 @@ tasks:
   - leaf-classification
 
 blocks:
-  - {config: c1_autonomous.yaml, seeds: [0, 1, 2, 3, 4]}
-  - {config: c4_divergence_prune.yaml, seeds: [0, 1, 2, 3, 4]}
-  - {config: c5_finding_correction.yaml, seeds: [0, 1, 2, 3, 4]}
-  - {config: ablation_a1_off.yaml, seeds: [0, 1, 2]}
-  - {config: ablation_a4_off.yaml, seeds: [0, 1, 2]}
+  - {config: c1_autonomous.yaml, seeds: [0, 1, 2]}         # full plan: [0, 1, 2, 3, 4]
+  - {config: c4_divergence_prune.yaml, seeds: [0, 1, 2]}   # full plan: [0, 1, 2, 3, 4]
+  - {config: c5_finding_correction.yaml, seeds: [0, 1, 2]} # full plan: [0, 1, 2, 3, 4]
+  - {config: ablation_a1_off.yaml, seeds: [0, 1]}          # full plan: [0, 1, 2]
+  - {config: ablation_a4_off.yaml, seeds: [0, 1]}          # full plan: [0, 1, 2]

@@ -6,6 +6,8 @@ We are behind: the first milestone (baseline agent and a pilot C1 run) was due 1
 
 Assumes the earliest presentation slot (29 Oct). A later slot becomes buffer.
 
+**Update 25 Oct:** runs start late, so the half plan in `docs/experiments.md` runs first, for the slide submission: 2-hour runs, 3 seeds for C1/C4/C5 and 2 for the ablations (78 runs, about 156 machine-hours). The remaining seeds follow if time allows.
+
 ## How we build
 
 Get one end-to-end run working first, then widen it. Do not build four parts separately and integrate at the end. The shared contracts (`tree.py`, `intervention.py`, `checkpoint.py`) already exist, so everyone can work in parallel against them.

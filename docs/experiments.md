@@ -15,9 +15,27 @@ Six MLE-bench Lite competitions, all CPU-feasible.
 
 ## Budget and seeds
 
+The proposal's plan:
+
 - 4 hours wall clock per run
 - 5 seeds for C1, C4, C5; 3 seeds for ablations
 - Report bootstrapped 95% CIs; no ranking claims where intervals overlap
+
+**Half plan first, for the slide submission (decided 25 Oct).** With about 3.5 days left in the run window, we run a half plan first so the slides have results from every condition:
+
+| | Proposal | Half plan |
+|---|---|---|
+| Wall clock per run | 4 h | 2 h |
+| Seeds for C1, C4, C5 | 5 | 3 (0, 1, 2) |
+| Seeds for A1-off, A4-off | 3 | 2 (0, 1) |
+| Runs per task | 21 | 13 |
+| Runs in total (6 tasks) | 126 | 78 |
+| Machine-hours | ~500 | ~156 |
+
+- `configs/schedule.yaml` holds the half plan. It needs at least two machines running non-stop to finish by 28 Oct, realistically three (`python scripts/launch_grid.py --shard i/3`).
+- If fewer machines are available, drop tasks before seeds (`docs/plan.md`): four tasks is 52 runs, about 104 machine-hours.
+- After the slides, the remaining seeds can be added (C1, C4, C5 seeds 3 and 4; ablation seed 2) by extending the seed lists. The launcher skips finished runs, so the half plan's runs count towards the full one. The budget stays 2 hours, so the two sets are comparable.
+- The slides must state the half plan: 2-hour runs and 3 or 2 seeds, so the intervals are wider than the proposal planned.
 
 ## Conditions
 
