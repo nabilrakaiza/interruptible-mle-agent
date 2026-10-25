@@ -7,7 +7,6 @@ by the controller (A5).
 from __future__ import annotations
 
 from enum import Enum
-from typing import Optional
 
 from pydantic import BaseModel, Field
 
@@ -28,17 +27,17 @@ class NodeStatus(str, Enum):
 
 class Node(BaseModel):
     id: str
-    parent_id: Optional[str] = None
+    parent_id: str | None = None
     operator: Operator
     plan: str = ""
     script_path: str = ""
     status: NodeStatus = NodeStatus.RUNNING
-    val_score: Optional[float] = None
-    probe_score: Optional[float] = None   # hidden from the agent, shown to monitors
-    test_score: Optional[float] = None    # graded for analysis, never shown to any agent
-    error: Optional[str] = None
-    started_at: Optional[str] = None
-    finished_at: Optional[str] = None
+    val_score: float | None = None
+    probe_score: float | None = None   # hidden from the agent, shown to monitors
+    test_score: float | None = None    # graded for analysis, never shown to any agent
+    error: str | None = None
+    started_at: str | None = None
+    finished_at: str | None = None
 
 
 class Tree(BaseModel):
@@ -46,6 +45,7 @@ class Tree(BaseModel):
     higher_is_better: bool = True
 
     def add(self, node: Node) -> None:
+        """Add a node; its ID must be new and its parent must already exist."""
         if node.id in self.nodes:
             raise ValueError(f"duplicate node id {node.id}")
         if node.parent_id is not None and node.parent_id not in self.nodes:
@@ -53,9 +53,11 @@ class Tree(BaseModel):
         self.nodes[node.id] = node
 
     def children(self, node_id: str) -> list[Node]:
+        """The direct children of a node."""
         return [n for n in self.nodes.values() if n.parent_id == node_id]
 
     def subtree_ids(self, node_id: str) -> list[str]:
+        """The node's ID and the IDs of all its descendants."""
         out, stack = [], [node_id]
         while stack:
             cur = stack.pop()
@@ -64,9 +66,11 @@ class Tree(BaseModel):
         return out
 
     def selectable(self) -> list[Node]:
+        """The working nodes, the only ones search and final selection may pick."""
         return [n for n in self.nodes.values() if n.status == NodeStatus.WORKING]
 
-    def best_by_val(self) -> Optional[Node]:
+    def best_by_val(self) -> Node | None:
+        """The selectable node with the best validation score, or None."""
         cands = [n for n in self.selectable() if n.val_score is not None]
         if not cands:
             return None

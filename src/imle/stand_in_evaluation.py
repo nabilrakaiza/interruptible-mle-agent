@@ -1,8 +1,9 @@
-"""Stand-in A1 for the six MLE-bench tasks, until role 3's `agents/evaluation.py` exists.
+"""The data layer for the six MLE-bench tasks: splits, metrics and submissions.
 
-Temporary, written by role 2 so real runs can start. It has the same `prepare` and
-`score` functions the controller expects from A1 (docs/core-agent-assumptions.md), and
-no leakage screen. Choose it with `python -m imle.controller --evaluator stand_in`.
+Written by role 2 as a stand-in A1 so real runs could start before role 3's. Role 3's
+`agents/evaluation.py` now builds on it: A1 calls `prepare` and `score` here and adds the
+frozen harness and the leakage screen. On its own (`python -m imle.controller --evaluator
+stand_in`) it scores the same rows, with no harness check or screen.
 
 It reads the data MLE-bench prepared (`mlebench prepare -c <task>`) from
 $MLEBENCH_DATA_DIR, by default MLE-bench's cache folder, and for each run writes:
@@ -371,8 +372,8 @@ def metric(part: pd.DataFrame, meta: dict) -> float:
     return float(np.mean([root_mean_squared_log_error(part[f"{t}_x"], part[f"{t}_y"]) for t in targets]))
 
 
-def _submission(joined: pd.DataFrame, meta: dict, harness: Path) -> pd.DataFrame:
-    """The test rows in MLE-bench's submission format and row order."""
+def submission(joined: pd.DataFrame, meta: dict, harness: Path) -> pd.DataFrame:
+    """The test rows in MLE-bench's submission format and row order. Also used by A1-off scoring."""
     test = joined[joined.split == "test"].sort_values("position")
     targets = meta["targets"]
     if meta["task"] == "detecting-insults-in-social-commentary":
@@ -400,6 +401,34 @@ def labelled_predictions(node_dir: Path) -> tuple[pd.DataFrame, dict]:
     return _check(pd.read_csv(node_dir / "output" / "predictions.csv"), labels, meta), meta
 
 
+def paired_worse_share(run_dir: Path, node_id: str, other_id: str, split: str, higher_is_better: bool,
+                       samples: int = 1000) -> float | None:
+    """Share of paired bootstrap resamples of the `split` rows on which `node_id` scores worse than `other_id`.
+
+    Both nodes are scored on the same resampled rows each time, so what is left is the noise
+    in their difference. None when the run has no stand-in labels (role 3's A1 keeps them
+    elsewhere) or a node's predictions cannot be scored. Seeded, so the same inputs always
+    give the same share.
+    """
+    if not (run_dir / ROOT_DIR / "harness" / "labels.csv").exists():
+        return None
+    try:
+        (mine, meta), (theirs, _) = (labelled_predictions(run_dir / "nodes" / n) for n in (node_id, other_id))
+    except (ValueError, OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
+        return None
+    rows = np.flatnonzero((mine["split"] == split).to_numpy())
+    rng = np.random.default_rng(0)
+    results = []
+    for _ in range(samples):
+        pick = rng.choice(rows, len(rows))
+        try:
+            a, b = metric(mine.iloc[pick], meta), metric(theirs.iloc[pick], meta)
+        except ValueError:  # e.g. AUC on a resample with one class
+            continue
+        results.append(a < b if higher_is_better else a > b)
+    return float(np.mean(results)) if results else None
+
+
 def score(node_dir: Path) -> SimpleNamespace:
     """Validation, probe and test scores of node_dir/output/predictions.csv; writes node_dir/submission.csv.
 
@@ -413,5 +442,5 @@ def score(node_dir: Path) -> SimpleNamespace:
         scores = {s: metric(joined[joined.split == s], meta) for s in ("val", "probe", "test")}
     except (ValueError, pd.errors.ParserError, pd.errors.EmptyDataError, UnicodeDecodeError) as e:
         return _result(error=str(e)[:500])
-    _submission(joined, meta, harness).to_csv(node_dir / "submission.csv", index=False)
+    submission(joined, meta, harness).to_csv(node_dir / "submission.csv", index=False)
     return _result(scores["val"], scores["probe"], scores["test"])

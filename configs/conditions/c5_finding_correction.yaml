@@ -1,2 +1,5 @@
 condition: C5
 monitors: [finding_correction]
+finding_correction:          # thresholds for policies/finding_correction.py (role 3)
+  max_gap: 0.02              # a cited node's validation gain may exceed its probe gain by at most this
+  min_fail_fraction: 0.5     # delete a finding once this share of its checked nodes failed

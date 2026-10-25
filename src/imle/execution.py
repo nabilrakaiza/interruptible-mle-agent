@@ -20,7 +20,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
-DEFAULT_IMAGE = "imle-sandbox:latest"
+from imle.sandbox import DEFAULT_IMAGE, THREAD_VARS
 
 
 @dataclass
@@ -37,9 +37,11 @@ class ExecOutcome:
 class DockerSandbox:
     """Role 1's Docker sandbox: workspace mounted read-only at /workspace, output folder at /output."""
 
-    def __init__(self, image: str = DEFAULT_IMAGE) -> None:
-        """`image` must contain Python and the packages listed in agents/coding.py."""
+    def __init__(self, image: str = DEFAULT_IMAGE, cpus: float = 2, memory_gb: float = 4) -> None:
+        """`image` must contain Python and the packages listed in agents/coding.py; the limits are A3's prompt's."""
         self.image = image
+        self.cpus = cpus
+        self.memory_gb = memory_gb
 
     def output_path(self, output_dir: Path) -> str:
         """Where the script sees `output_dir`: always /output inside the container."""
@@ -57,12 +59,9 @@ class DockerSandbox:
             timeout_s=max(1, math.ceil(timeout_s)),
             image=self.image,
             output_dir=str(output_dir),
+            cpus=self.cpus,
+            memory_gb=self.memory_gb,
         )
-
-
-# Variables that cap the threads numpy, scikit-learn (joblib) and torch use.
-THREAD_VARS = ("OMP_NUM_THREADS", "OPENBLAS_NUM_THREADS", "MKL_NUM_THREADS", "VECLIB_MAXIMUM_THREADS",
-               "NUMEXPR_NUM_THREADS", "LOKY_MAX_CPU_COUNT")
 
 
 class SubprocessSandbox:
@@ -114,7 +113,8 @@ def make_sandbox(cfg: dict, backend: str | None = None) -> DockerSandbox | Subpr
     settings = cfg.get("sandbox") or {}
     backend = backend or settings.get("backend", "docker")
     if backend == "docker":
-        return DockerSandbox(settings.get("image", DEFAULT_IMAGE))
+        return DockerSandbox(settings.get("image", DEFAULT_IMAGE), settings.get("cpus", 2),
+                             settings.get("memory_gb", 4))
     if backend == "subprocess":
         return SubprocessSandbox(settings.get("cpus"))
     raise ValueError(f"unknown sandbox backend {backend!r}")

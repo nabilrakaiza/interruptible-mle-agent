@@ -1,7 +1,7 @@
 # Shared defaults. Condition files override these.
 budget:
   wall_clock_s: 7200         # 2 hours; extend a finished run with --resume --budget-hours
-  script_timeout_s: 3600
+  script_timeout_s: 1200     # 20 min: a small CNN on 2 CPUs fits; one script cannot eat half a 2-hour run
   max_nodes: 200
 search:
   policy: greedy
@@ -15,10 +15,21 @@ splits:
   probe_fraction: 0.1
 final_selection: best_val    # best_val | top_k | override
 top_k: 3                     # submissions kept when final_selection is top_k
+policies:                    # thresholds of the scripted monitors a condition names in `monitors`
+  divergence_prune:          # C4, see imle/policies/divergence_prune.py
+    min_steps: 2             # working nodes after the lineage's best-probe node
+    min_val_gain: 0.01       # relative validation gain since that node
+    min_probe_loss: 0.01     # relative probe loss since that node
+    consistent_share: 0.95   # paired bootstrap resamples the probe loss must hold in
+    bootstrap_samples: 1000
 agents:
   evaluation: true
   retrieval: true
   reflection: true
+reflection:                  # A4, used when agents.reflection is true
+  every_n: 10                # finished nodes between phase boundaries, after the first num_drafts
+  max_findings: 10           # findings kept (newest); each call adds at most 3
+  max_retries: 2             # extra attempts when A4's reply is not valid JSON
 retrieval:                   # A2, used when agents.retrieval is true
   source: web                # web: cards written from allowlisted docs | static: hand-written cards only
   cache_dir: data/retrieval_cache  # fetched pages, shared by runs so every run reads the same text

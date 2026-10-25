@@ -8,7 +8,7 @@ from __future__ import annotations
 import json
 from enum import Enum
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any
 
 from pydantic import BaseModel, Field
 
@@ -39,15 +39,15 @@ class Intervention(BaseModel):
     ts: str
     source: str                      # "human" or a policy name
     action: Action
-    target: Optional[str] = None
+    target: str | None = None
     params: dict[str, Any] = Field(default_factory=dict)
-    note: Optional[str] = None
+    note: str | None = None
 
 
 class AppliedRecord(BaseModel):
     intervention: Intervention
     outcome: str                     # "applied" or "dropped"
-    reason: Optional[str] = None
+    reason: str | None = None
     applied_at: str
 
 
@@ -59,13 +59,22 @@ def append(queue_path: Path, item: Intervention) -> None:
 
 
 def read_all(queue_path: Path) -> list[Intervention]:
+    """Every valid queue item, in timestamp order.
+
+    A malformed line (bad JSON, unknown action, missing field) is reported and skipped, so
+    one bad write by a monitor cannot block the items after it.
+    """
     if not queue_path.exists():
         return []
     items = []
-    for line in queue_path.read_text(encoding="utf-8").splitlines():
+    for number, line in enumerate(queue_path.read_text(encoding="utf-8").splitlines(), start=1):
         line = line.strip()
-        if line:
+        if not line:
+            continue
+        try:
             items.append(Intervention.model_validate(json.loads(line)))
+        except ValueError as e:  # json.JSONDecodeError and pydantic's ValidationError are both ValueErrors
+            print(f"warning: {queue_path.name} line {number} skipped: {str(e).splitlines()[0]}")
     return sorted(items, key=lambda i: i.ts)
 
 

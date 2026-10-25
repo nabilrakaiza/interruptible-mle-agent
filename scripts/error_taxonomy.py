@@ -41,13 +41,13 @@ import re
 from collections import Counter
 from pathlib import Path
 
-import numpy as np
 import pandas as pd
 import yaml
 
 from imle import stand_in_evaluation
 from imle.controller import KILLED_EXIT_CODES, beats, latest_complete_checkpoint
 from imle.controller import same_predictions as controller_same_predictions
+from imle.monitor import md_table
 from imle.tree import Node, NodeStatus, Operator, Tree
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -143,29 +143,9 @@ def paired_worse_share(tree: Tree, run_dir: Path, node_id: str, parent_id: str, 
                        samples: int = BOOTSTRAP_SAMPLES) -> float | None:
     """Share of paired bootstrap resamples of the `split` rows on which the node scores worse than its parent.
 
-    Both nodes are scored on the same resampled rows each time, so what is left is the noise
-    in their difference. None when the run has no stand-in labels (role 3's A1 keeps them
-    elsewhere) or a node's predictions cannot be scored.
+    See stand_in_evaluation.paired_worse_share; None when the run has no stand-in labels.
     """
-    if not (run_dir / stand_in_evaluation.ROOT_DIR / "harness" / "labels.csv").exists():
-        return None
-    try:
-        (mine, meta), (theirs, _) = (stand_in_evaluation.labelled_predictions(run_dir / "nodes" / n)
-                                     for n in (node_id, parent_id))
-    except (ValueError, OSError, pd.errors.ParserError, pd.errors.EmptyDataError):
-        return None
-    rows = np.flatnonzero((mine["split"] == split).to_numpy())
-    rng = np.random.default_rng(0)
-    results = []
-    for _ in range(samples):
-        pick = rng.choice(rows, len(rows))
-        try:
-            a = stand_in_evaluation.metric(mine.iloc[pick], meta)
-            b = stand_in_evaluation.metric(theirs.iloc[pick], meta)
-        except ValueError:  # e.g. AUC on a resample with one class
-            continue
-        results.append(worse(tree, a, b))
-    return float(np.mean(results)) if results else None
+    return stand_in_evaluation.paired_worse_share(run_dir, node_id, parent_id, split, tree.higher_is_better, samples)
 
 
 def overfits(tree: Tree, run_dir: Path, node: Node, parent: Node, min_gain: float) -> bool:
@@ -287,17 +267,6 @@ def run_summary(tree: Tree, status: dict) -> dict:
         "selection_regret": round(regret, 4) if regret is not None else None,
         "regret_basis": basis,
     }
-
-
-def md_table(df: pd.DataFrame) -> str:
-    """A pandas frame as a markdown table, without needing the tabulate package."""
-    if df.empty:
-        return "(none)\n"
-    cols = [str(c) for c in df.columns]
-    lines = ["| " + " | ".join(cols) + " |", "|" + "---|" * len(cols)]
-    for _, r in df.iterrows():
-        lines.append("| " + " | ".join("" if pd.isna(v) else str(v) for v in r.tolist()) + " |")
-    return "\n".join(lines) + "\n"
 
 
 def summarise(nodes: pd.DataFrame, runs: pd.DataFrame) -> str:

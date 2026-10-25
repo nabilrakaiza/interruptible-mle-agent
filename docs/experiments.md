@@ -15,9 +15,48 @@ Six MLE-bench Lite competitions, all CPU-feasible.
 
 ## Budget and seeds
 
+The proposal's plan:
+
 - 4 hours wall clock per run
 - 5 seeds for C1, C4, C5; 3 seeds for ablations
 - Report bootstrapped 95% CIs; no ranking claims where intervals overlap
+
+**Half plan first, for the slide submission (decided 25 Oct).** With about 3 days left in the run window, we run a smaller plan first so the slides have results from every condition: four tasks, one person per task, half the seeds, and one C6 session per person.
+
+| | Proposal | Half plan |
+|---|---|---|
+| Tasks | 6 | 4: spooky, nomad, cactus, leaf |
+| Wall clock per run | 4 h | 2 h |
+| Seeds for C1, C4, C5 | 5 | 3 (0, 1, 2) |
+| Seeds for A1-off, A4-off | 3 | 2 (0, 1) |
+| C6 | a few sessions | one per person, on their own task |
+| Runs per task | 21 | 13, plus 1 C6 session |
+| Runs in total | 126 | 52, plus 4 C6 sessions |
+| Machine-hours | ~500 | ~112 (~28 per person) |
+
+**Who runs what.** Each person owns one task and runs all of its runs on their own machine:
+
+| Task | Modality | Person |
+|---|---|---|
+| `spooky-author-identification` | text | to assign |
+| `nomad2018-predict-transparent-conductors` | tabular regression | to assign |
+| `aerial-cactus-identification` | image | to assign |
+| `leaf-classification` | image, with tabular features | to assign |
+
+```bash
+python scripts/launch_grid.py --only <task> --status   # this task's 13 runs: done, unfinished, to do
+python scripts/launch_grid.py --only <task>            # run them in order (C1, C4, C5, A1-off, A4-off); rerun to resume
+```
+
+Each person's 13 runs take about 26 hours back to back, plus 2 hours for the C6 session, so a machine must run nearly non-stop until 28 Oct. Keep the laptop plugged in, awake (`caffeinate -i -s` on a Mac) and open.
+
+**C6, individually.** Each person runs one C6 session on their own task, alone (`docs/c6-protocol.md`): the same person watches, intervenes and writes the notes. Fit it in between grid runs, at a time you can watch for the full 2 hours.
+
+**Why these four tasks.** One per modality, and all four already have pilot runs (C4's thresholds were set from them). Insults and pizza are both binary AUC on short text and have no pilots, so they are the two dropped, following the rule in `docs/plan.md` (drop tasks before seeds).
+
+**After the slides.** The full plan adds insults and pizza, C1/C4/C5 seeds 3 and 4, and ablation seed 2, by editing `configs/schedule.yaml`. The launcher skips finished runs, so every half-plan run counts towards the full plan. The budget stays 2 hours, so the two sets are comparable.
+
+**The slides must state the half plan:** four tasks, 2-hour runs, and 3 or 2 seeds, so the intervals are wider than the proposal planned, and the C6 sessions had no separate observer.
 
 ## Conditions
 

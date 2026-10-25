@@ -8,15 +8,22 @@ claude.md
 
 # secrets, data and run artefacts (see README)
 .env
+.env.*
+!.env.example
 data/
 runs/
 
 # python
 __pycache__/
+*.py[cod]
 .pytest_cache/
 .ruff_cache/
 *.egg-info/
 .venv/
+venv/
+
+# editors
+.vscode/
 
 # Created by mlebench commands run from the repo root
 cache/

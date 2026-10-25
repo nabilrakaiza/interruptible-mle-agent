@@ -757,7 +757,7 @@ class Controller:
             return self._close(node, error=f"invalid_submission: {score.error or 'no validation score'}")
         node.val_score = score.val_score
         node.probe_score = score.probe_score
-        # For analysis only: an evaluator that can grade the test rows at once (the stand-in) reports it here.
+        # For analysis only: an evaluator that can grade the test rows at once (A1 and the stand-in) reports it here.
         node.test_score = getattr(score, "test_score", None)
         return self._close(node)
 
@@ -929,8 +929,9 @@ def main() -> None:
                              "--resume, a run with less is given more and continued, even if it had finished")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override sandbox.backend")
     parser.add_argument("--evaluator", choices=["a1", "stand_in"],
-                        help="a1: role 3's agents/evaluation.py (default); stand_in: imle/stand_in_evaluation.py, "
-                             "the temporary MLE-bench evaluator. New runs only; a resumed run keeps its evaluator")
+                        help="a1: role 3's agents/evaluation.py (default); stand_in: imle/stand_in_evaluation.py, the "
+                             "same splits without A1's harness check or leakage screen. New runs only; a resumed "
+                             "run keeps its evaluator")
     parser.add_argument("--provider", choices=["openrouter", "gemini"],
                         help="override llm.provider for a new run; a resumed run keeps the provider it started with")
     args = parser.parse_args()
