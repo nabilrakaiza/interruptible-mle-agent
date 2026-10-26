@@ -47,6 +47,13 @@ def test_subprocess_sandbox_caps_threads_at_the_configured_cpus(tmp_path: Path):
     assert make_sandbox({"sandbox": {"backend": "subprocess", "cpus": 3}}).cpus == 3
 
 
+def test_subprocess_sandbox_sets_output_dir_in_the_environment(tmp_path: Path):
+    """Scripts that read OUTPUT_DIR from the environment get the node's output folder."""
+    (tmp_path / "out.py").write_text("import os\nprint(os.environ['OUTPUT_DIR'])\n")
+    out = tmp_path / "output"
+    assert SubprocessSandbox().run(tmp_path / "out.py", tmp_path, out, 10).stdout == f"{out.resolve()}\n"
+
+
 def test_make_sandbox():
     """The backend comes from the argument, then the config, then defaults to Docker."""
     assert isinstance(make_sandbox({}), DockerSandbox)

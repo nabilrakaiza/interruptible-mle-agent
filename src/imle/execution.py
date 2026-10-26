@@ -84,7 +84,7 @@ class SubprocessSandbox:
         start = time.monotonic()
         try:
             # No GPU, as in the Docker sandbox: Colab and Kaggle machines may have one, and torch would use it.
-            env = {**os.environ, "CUDA_VISIBLE_DEVICES": ""}
+            env = {**os.environ, "CUDA_VISIBLE_DEVICES": "", "OUTPUT_DIR": self.output_path(output_dir)}
             if self.cpus is not None:
                 env.update({v: str(self.cpus) for v in THREAD_VARS})
             p = subprocess.run(
