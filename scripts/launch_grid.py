@@ -13,6 +13,7 @@ skipped, instead of failing and retrying.
     python scripts/launch_grid.py --shard 0/3 --dry-run          # what machine 0 of 3 would run
     python scripts/launch_grid.py --shard 0/3                    # run it
     python scripts/launch_grid.py --only C1 --only spooky        # a subset (substring of condition or task)
+    python scripts/launch_grid.py --only spooky --seed 0         # seed 0 of every condition: one night, 5 runs
     python scripts/launch_grid.py --shard 1/3 --sandbox subprocess --sync-to /content/drive/MyDrive/imle/runs
 """
 
@@ -71,12 +72,14 @@ def parse_shard(text: str) -> tuple[int, int]:
     return shard, count
 
 
-def select(runs: list[Run], shard: tuple[int, int] | None, only: list[str]) -> list[Run]:
-    """The runs this machine takes: its shard (by position in the full grid), filtered by --only."""
+def select(runs: list[Run], shard: tuple[int, int] | None, only: list[str], seeds: list[int] = ()) -> list[Run]:
+    """The runs this machine takes: its shard (by position in the full grid), filtered by --only and --seed."""
     if shard:
         runs = [r for r in runs if r.index % shard[1] == shard[0]]
     for word in only:
         runs = [r for r in runs if word in r.condition or word in r.task]
+    if seeds:
+        runs = [r for r in runs if r.seed in seeds]
     return runs
 
 
@@ -109,6 +112,7 @@ def main() -> None:
     parser.add_argument("--schedule", type=Path, default=ROOT / "configs" / "schedule.yaml")
     parser.add_argument("--shard", type=parse_shard, help="i/N: this machine is number i (from 0) of N")
     parser.add_argument("--only", action="append", default=[], help="keep runs whose condition or task contains this")
+    parser.add_argument("--seed", type=int, action="append", default=[], help="keep runs with this seed (repeatable)")
     parser.add_argument("--runs-root", type=Path, help="override the schedule's runs_root")
     parser.add_argument("--budget-hours", type=float, help="override the schedule's budget_hours")
     parser.add_argument("--sandbox", choices=["docker", "subprocess"], help="override the schedule's sandbox")
@@ -123,7 +127,7 @@ def main() -> None:
     defaults = schedule.get("defaults") or {}
     budget = args.budget_hours or float(defaults.get("budget_hours", 2))
     args.runs_root = (args.runs_root or ROOT / defaults.get("runs_root", "runs/grid")).resolve()
-    runs = select(grid(schedule, args.schedule.parent / "conditions"), args.shard, args.only)
+    runs = select(grid(schedule, args.schedule.parent / "conditions"), args.shard, args.only, args.seed)
     reasons = {c: blocked(c) for c in {r.config for r in runs}}
 
     if args.status:

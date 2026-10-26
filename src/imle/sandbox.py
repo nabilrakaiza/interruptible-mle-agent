@@ -87,6 +87,7 @@ def docker_command(
         command += ["--mount", f"type=bind,src={harness},dst=/harness,readonly"]
     if output is not None:
         command += ["--mount", f"type=bind,src={output},dst=/output"]
+        env["OUTPUT_DIR"] = "/output"  # for scripts that read it from the environment instead of the variable
     for key, value in env.items():
         command += ["--env", f"{key}={value}"]
     return command + [image, "python", script.name]

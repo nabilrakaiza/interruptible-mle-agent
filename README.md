@@ -144,7 +144,7 @@ python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
 ```bash
 python scripts/launch_grid.py --status                         # the whole grid: done, unfinished, to do
 python scripts/launch_grid.py --only <task> --dry-run          # the runs for your task, without starting them
-python scripts/launch_grid.py --only <task>                    # run them
+python scripts/launch_grid.py --only <task> --seed 0           # run seed 0 of every condition (one night); then --seed 1, --seed 2
 ```
 
 `--shard i/N` instead splits the whole grid across N machines by position.

@@ -15,8 +15,6 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
-import io
-import tokenize
 
 # Packages the prompt tells the model it may import, with the sandbox image's versions. Must match the image.
 # The scikit-learn notes cover the removed options that wasted most drafts in the pilots (24 Oct: 15 nodes
@@ -137,47 +135,42 @@ def _module_level_output_dir_assignments(script: str) -> list[ast.stmt]:
     return found
 
 
+def _char_offset(line: str, byte_offset: int) -> int:
+    """`ast` column offsets count UTF-8 bytes; the same position as a character index into `line`."""
+    return len(line.encode("utf-8")[:byte_offset].decode("utf-8", errors="ignore"))
+
+
 def drop_output_dir_assignments(script: str) -> str:
-    """The script with its own module-level `OUTPUT_DIR = ...` lines disabled.
+    """The script with its own module-level `OUTPUT_DIR = ...` statements disabled.
 
     The prompt says OUTPUT_DIR is set for the script, but some models still assign it
-    (to "/kaggle/working", say), which sends the predictions elsewhere. Each such
-    statement becomes `pass` plus its original text as a comment, so line numbers and
-    blocks stay intact. A statement sharing its line with another is left alone.
+    (to "/kaggle/working", or `os.environ.get("OUTPUT_DIR", ".")`), which sends the
+    predictions elsewhere. Only the statement itself becomes `pass`, so another statement
+    on the same line keeps running (`import os; OUTPUT_DIR = ...` becomes `import os; pass`).
+    Its original text follows as a comment, and the other lines of a multi-line statement
+    become comments, so line numbers and blocks stay intact. If the result would not parse,
+    the script is returned unchanged.
     """
     lines = script.splitlines(keepends=True)
-    for stmt in _module_level_output_dir_assignments(script):
-        first = lines[stmt.lineno - 1]
+    # Bottom up, so that rewriting one statement never moves the offsets of the next.
+    for stmt in sorted(_module_level_output_dir_assignments(script), key=lambda st: (st.lineno, st.col_offset),
+                       reverse=True):
+        first, last = lines[stmt.lineno - 1], lines[stmt.end_lineno - 1]
+        before = first[: _char_offset(first, stmt.col_offset)]
+        after = last[_char_offset(last, stmt.end_col_offset):].rstrip("\r\n")
+        original = " ".join(lines[i].strip() for i in range(stmt.lineno - 1, stmt.end_lineno))
+        note = "" if after.rstrip().endswith("\\") else f"  # OUTPUT_DIR is set by the controller; this line was: {original}"
         indent = first[: len(first) - len(first.lstrip())]
-
-        if stmt.col_offset != len(indent):
-            continue
-
-        # Detect real semicolons, ignoring comments and strings.
-
-        # Tokenize the entire assignment, including multiline statements.
-        statement_text = "".join(
-            lines[stmt.lineno - 1 : stmt.end_lineno]
-        )
-
-        tokens = tokenize.generate_tokens(
-            io.StringIO(statement_text).readline
-        )
-
-        has_semicolon = any(
-            token.type == tokenize.OP and token.string == ";"
-            for token in tokens
-        )
-
-        if has_semicolon:
-            continue
-
-
-        for i in range(stmt.lineno - 1, stmt.end_lineno):
+        for i in range(stmt.lineno, stmt.end_lineno):
             ending = "\n" if lines[i].endswith("\n") else ""
             lines[i] = f"{indent}# {lines[i].strip()}{ending}"
-        lines[stmt.lineno - 1] = f"{indent}pass  # OUTPUT_DIR is set by the controller; this line was: {first.strip()}\n"
-    return "".join(lines)
+        lines[stmt.lineno - 1] = f"{before}pass{after}{note}\n"
+    out = "".join(lines)
+    try:
+        ast.parse(out)
+    except SyntaxError:
+        return script
+    return out
 
 
 def with_output_dir(script: str, output_path: str) -> str:

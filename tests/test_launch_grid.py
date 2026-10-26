@@ -33,6 +33,7 @@ def test_shards_split_the_grid_by_position():
     assert sorted(r.index for s in shards for r in s) == list(range(6))
     assert [r.index for r in shards[1]] == [1, 4]
     assert [r.name for r in launch_grid.select(runs, None, ["C1", "b"])] == ["C1_b_seed0", "C1_b_seed1"]
+    assert [r.name for r in launch_grid.select(runs, None, ["b"], [1])] == ["C1_b_seed1"]
     assert launch_grid.parse_shard("2/3") == (2, 3)
     with pytest.raises(argparse.ArgumentTypeError):
         launch_grid.parse_shard("3/3")
