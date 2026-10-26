@@ -15,6 +15,8 @@ import re
 from collections.abc import Sequence
 from pathlib import Path
 from typing import Any, Protocol
+import io
+import tokenize
 
 # Packages the prompt tells the model it may import, with the sandbox image's versions. Must match the image.
 # The scikit-learn notes cover the removed options that wasted most drafts in the pilots (24 Oct: 15 nodes
@@ -147,8 +149,30 @@ def drop_output_dir_assignments(script: str) -> str:
     for stmt in _module_level_output_dir_assignments(script):
         first = lines[stmt.lineno - 1]
         indent = first[: len(first) - len(first.lstrip())]
-        if stmt.col_offset != len(indent) or ";" in first:
+
+        if stmt.col_offset != len(indent):
             continue
+
+        # Detect real semicolons, ignoring comments and strings.
+
+        # Tokenize the entire assignment, including multiline statements.
+        statement_text = "".join(
+            lines[stmt.lineno - 1 : stmt.end_lineno]
+        )
+
+        tokens = tokenize.generate_tokens(
+            io.StringIO(statement_text).readline
+        )
+
+        has_semicolon = any(
+            token.type == tokenize.OP and token.string == ";"
+            for token in tokens
+        )
+
+        if has_semicolon:
+            continue
+
+
         for i in range(stmt.lineno - 1, stmt.end_lineno):
             ending = "\n" if lines[i].endswith("\n") else ""
             lines[i] = f"{indent}# {lines[i].strip()}{ending}"
