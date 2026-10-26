@@ -47,7 +47,7 @@ def test_docker_command_sets_the_configured_limits(tmp_path: Path):
     assert "/tmp:rw,noexec,nosuid,size=1024m" in option(cmd, "--tmpfs")
     env = option(cmd, "--env")
     assert "OMP_NUM_THREADS=2" in env and "LOKY_MAX_CPU_COUNT=2" in env and "CUDA_VISIBLE_DEVICES=" in env
-    assert f"type=bind,src={tmp_path / 'out'},dst=/output" in option(cmd, "--mount")
+    assert f"type=bind,src={tmp_path / 'out'},dst=/output" in option(cmd, "--mount") and "OUTPUT_DIR=/output" in env
     assert cmd[-3:] == ["img", "python", "n3.py"] and "--read-only" in cmd
 
 
