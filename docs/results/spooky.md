@@ -6,6 +6,7 @@ The half plan's 13 runs on `spooky-author-identification`: seeds 0, 1 and 2 of C
 - [`spooky-seed1.md`](spooky-seed1.md): all five conditions, seed 1
 - [`spooky-seed2.md`](spooky-seed2.md): C1, C4 and C5, seed 2
 - [`spooky-c6.md`](spooky-c6.md): the C6 live session, seed 100
+- [`spooky-drops.md`](spooky-drops.md): where the big drops come from, across all 14 runs
 
 Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: median 0.4188, bronze 0.2938.
 
@@ -60,6 +61,7 @@ One session, seed 100, oversight only ([`spooky-c6.md`](spooky-c6.md)). Test **0
 3. **Final selection rarely matters with A1.** Across the C1, C4 and C5 runs, the oracle pick would have gained 0.001 at most, except on C5 seed 1. There it would have gained 0.004 and reached bronze (0.2934 against 0.2973), picking from a near-tie on validation. Without A1, on seed 1, the oracle would have gained 0.023.
 4. **The leakage check caught two leaks with A1 on.** In C1 seed 2, it stopped two scripts (n15 and n38) that evaluated a model on validation rows it was fitted on, and debug fixed both.
 5. **Seed noise dominates.** Three seeds, or two for the ablations, can't separate effects of a few hundredths when C1's own seeds differ by 0.066.
+6. **The big drops come from combining naive Bayes with a linear model** ([`spooky-drops.md`](spooky-drops.md)). Every run below 0.34 submitted such a combination, and every run that didn't stayed at 0.34 or above. Adding one ComplementNB to C6's submitted script improves its test score from 0.368 to 0.336. C6's agent had kept a finding that said to prefer TF-IDF over NB: true for the two drafts it compared, but wrong for what mattered later.
 
 ## Pick's validation against test
 
