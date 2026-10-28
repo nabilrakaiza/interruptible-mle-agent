@@ -1,0 +1,20 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,A1-off,0.06131,True,True,True
+A1-off_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,A1-off,0.06072,True,True,True
+A4-off_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,A4-off,0.05649,True,True,True
+A4-off_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,A4-off,0.06165,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,C1,0.05991,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,C2 (post hoc),0.0598,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,"C3 (post hoc, k=3)",0.05983,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,C1,0.06169,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,C2 (post hoc),0.0611,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,"C3 (post hoc, k=3)",0.0611,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed2,nomad2018-predict-transparent-conductors,2,C1,0.06527,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed2,nomad2018-predict-transparent-conductors,2,C2 (post hoc),0.06386,True,True,True
+C1_nomad2018-predict-transparent-conductors_seed2,nomad2018-predict-transparent-conductors,2,"C3 (post hoc, k=3)",0.06472,True,True,True
+C4_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,C4,0.06128,True,True,True
+C4_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,C4,0.0608,True,True,True
+C4_nomad2018-predict-transparent-conductors_seed2,nomad2018-predict-transparent-conductors,2,C4,0.06099,True,True,True
+C5_nomad2018-predict-transparent-conductors_seed0,nomad2018-predict-transparent-conductors,0,C5,0.06089,True,True,True
+C5_nomad2018-predict-transparent-conductors_seed1,nomad2018-predict-transparent-conductors,1,C5,0.06226,True,True,True
+C5_nomad2018-predict-transparent-conductors_seed2,nomad2018-predict-transparent-conductors,2,C5,0.06123,True,True,True
