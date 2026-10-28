@@ -13,6 +13,7 @@ Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: med
 ## Setup
 
 - DeepSeek V4 Flash 0731 (fp8), Docker sandbox, 2 hours and 2 CPUs per run, A1 on unless the condition turns it off.
+- **Machine:** a 13-inch MacBook Pro (2020, Apple M1, 8 cores, 8 GB of memory), macOS 26. Docker ran in Colima 0.10.3 with a 2-CPU, 4 GB VM, and each script's sandbox was capped at 2 CPUs and 4 GB inside it. Runs went one at a time, overnight, with the laptop on power and kept awake. Each run records its machine in `machine.jsonl`.
 - From seed 1 onwards, with the PR #7 fix for `OUTPUT_DIR` statements. It crashed two nodes in seed 0's A4-off run and none after.
 - **Cost:** $1.00 for the 13 runs ($0.294, $0.446 and $0.256 a night).
 - **Health:** no restarts. Every run finished on its budget and made a valid submission.
