@@ -1,0 +1,38 @@
+{
+  "task": "aerial-cactus-identification",
+  "condition": "C5",
+  "seed": 0,
+  "final_node": "n24",
+  "final_selection": "best_val",
+  "submitted": true,
+  "score": 0.99999,
+  "valid_submission": true,
+  "above_median": true,
+  "any_medal": false,
+  "gold_medal": false,
+  "silver_medal": false,
+  "bronze_medal": false,
+  "median_threshold": 0.9991,
+  "bronze_threshold": 1.0,
+  "silver_threshold": 1.0,
+  "gold_threshold": 1.0,
+  "is_lower_better": false,
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "score": 0.99999,
+      "valid_submission": true,
+      "above_median": true,
+      "any_medal": false,
+      "gold_medal": false,
+      "silver_medal": false,
+      "bronze_medal": false,
+      "median_threshold": 0.9991,
+      "bronze_threshold": 1.0,
+      "silver_threshold": 1.0,
+      "gold_threshold": 1.0,
+      "is_lower_better": false
+    }
+  ],
+  "graded_at": "2026-10-26T21:47:53.610353+00:00"
+}
