@@ -1,0 +1,20 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_spooky-author-identification_seed0,spooky-author-identification,0,A1-off,0.33765,True,True,False
+A1-off_spooky-author-identification_seed1,spooky-author-identification,1,A1-off,0.33738,True,True,False
+A4-off_spooky-author-identification_seed0,spooky-author-identification,0,A4-off,0.33613,True,True,False
+A4-off_spooky-author-identification_seed1,spooky-author-identification,1,A4-off,0.36513,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C1,0.36063,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C2 (post hoc),0.36063,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,"C3 (post hoc, k=3)",0.36063,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,C1,0.30867,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,C2 (post hoc),0.30867,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,"C3 (post hoc, k=3)",0.30867,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,C1,0.29458,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,C2 (post hoc),0.29458,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,"C3 (post hoc, k=3)",0.29458,True,True,False
+C4_spooky-author-identification_seed0,spooky-author-identification,0,C4,0.38082,True,True,False
+C4_spooky-author-identification_seed1,spooky-author-identification,1,C4,0.33393,True,True,False
+C4_spooky-author-identification_seed2,spooky-author-identification,2,C4,0.35677,True,True,False
+C5_spooky-author-identification_seed0,spooky-author-identification,0,C5,0.36322,True,True,False
+C5_spooky-author-identification_seed1,spooky-author-identification,1,C5,0.29726,True,True,False
+C5_spooky-author-identification_seed2,spooky-author-identification,2,C5,0.34143,True,True,False
