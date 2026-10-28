@@ -1,0 +1,14 @@
+run,condition,task,seed,final_gap,best_val_gap,mean_gap,nodes_with_test,working_without_test
+A1-off_nomad2018-predict-transparent-conductors_seed0,A1-off,nomad2018-predict-transparent-conductors,0,0.002245275129299368,0.002245275129299368,0.00037755022145471946,28,0
+A1-off_nomad2018-predict-transparent-conductors_seed1,A1-off,nomad2018-predict-transparent-conductors,1,0.007111823320663846,0.007111823320663846,0.003365725794831872,60,0
+A4-off_nomad2018-predict-transparent-conductors_seed0,A4-off,nomad2018-predict-transparent-conductors,0,0.0026132498450305297,0.0026132498450305297,0.000541848771616246,75,0
+A4-off_nomad2018-predict-transparent-conductors_seed1,A4-off,nomad2018-predict-transparent-conductors,1,0.00030678457199653786,0.00030678457199653786,-0.0005297620754095345,93,0
+C1_nomad2018-predict-transparent-conductors_seed0,C1,nomad2018-predict-transparent-conductors,0,-0.0014609428773351626,-0.0014609428773351626,-0.0007972053212218527,47,0
+C1_nomad2018-predict-transparent-conductors_seed1,C1,nomad2018-predict-transparent-conductors,1,-0.0005994348314221909,-0.0005994348314221909,-0.0007877187206858123,12,0
+C1_nomad2018-predict-transparent-conductors_seed2,C1,nomad2018-predict-transparent-conductors,2,0.001725805850024048,0.001725805850024048,-0.0006660930742005713,11,0
+C4_nomad2018-predict-transparent-conductors_seed0,C4,nomad2018-predict-transparent-conductors,0,0.0004495420912616621,0.0004495420912616621,-0.0010694203743358943,46,0
+C4_nomad2018-predict-transparent-conductors_seed1,C4,nomad2018-predict-transparent-conductors,1,0.0010083644626682695,0.0010083644626682695,8.524738427789801e-05,65,0
+C4_nomad2018-predict-transparent-conductors_seed2,C4,nomad2018-predict-transparent-conductors,2,-0.0008780745220061878,-0.0008780745220061878,-0.0017763239668120508,60,0
+C5_nomad2018-predict-transparent-conductors_seed0,C5,nomad2018-predict-transparent-conductors,0,-0.0008250767742737711,-0.0008250767742737711,-0.001242358094943913,49,0
+C5_nomad2018-predict-transparent-conductors_seed1,C5,nomad2018-predict-transparent-conductors,1,0.00042230212772410153,0.00042230212772410153,-0.000872265408322,55,0
+C5_nomad2018-predict-transparent-conductors_seed2,C5,nomad2018-predict-transparent-conductors,2,0.0009975365713258133,0.0009975365713258133,-0.0009411206017935718,50,0

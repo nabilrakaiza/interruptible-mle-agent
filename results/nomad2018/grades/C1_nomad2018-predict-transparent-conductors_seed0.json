@@ -1,0 +1,38 @@
+{
+  "task": "nomad2018-predict-transparent-conductors",
+  "condition": "C1",
+  "seed": 0,
+  "final_node": "n35",
+  "final_selection": "best_val",
+  "submitted": true,
+  "score": 0.05991,
+  "valid_submission": true,
+  "above_median": true,
+  "any_medal": true,
+  "gold_medal": false,
+  "silver_medal": true,
+  "bronze_medal": false,
+  "median_threshold": 0.06988,
+  "bronze_threshold": 0.06582,
+  "silver_threshold": 0.06229,
+  "gold_threshold": 0.05589,
+  "is_lower_better": true,
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "score": 0.05991,
+      "valid_submission": true,
+      "above_median": true,
+      "any_medal": true,
+      "gold_medal": false,
+      "silver_medal": true,
+      "bronze_medal": false,
+      "median_threshold": 0.06988,
+      "bronze_threshold": 0.06582,
+      "silver_threshold": 0.06229,
+      "gold_threshold": 0.05589,
+      "is_lower_better": true
+    }
+  ],
+  "graded_at": "2026-10-26T08:40:39.736161+00:00"
+}
