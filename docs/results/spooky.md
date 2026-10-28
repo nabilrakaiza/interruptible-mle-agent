@@ -5,6 +5,7 @@ The half plan's 13 runs on `spooky-author-identification`: seeds 0, 1 and 2 of C
 - [`spooky-seed0.md`](spooky-seed0.md): all five conditions, seed 0
 - [`spooky-seed1.md`](spooky-seed1.md): all five conditions, seed 1
 - [`spooky-seed2.md`](spooky-seed2.md): C1, C4 and C5, seed 2
+- [`spooky-c6.md`](spooky-c6.md): the C6 live session, seed 100
 
 Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: median 0.4188, bronze 0.2938.
 
@@ -43,6 +44,15 @@ Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: med
 - **C5 fired once,** at safe point 35 of seed 2. It deleted a finding that character n-grams hurt. The probe agreed they hurt, just by less (−0.036 against −0.058 on validation), and the gap was 0.022 against a 0.02 threshold. This reads as a false positive of the rule's check for "hurts" findings. It changed nothing: the pick was already made, and the agent never tried character n-grams again.
 - **Replayed after the run, on A1-off seed 1, C4 would have helped.** It fires at n45, prunes the 12 nodes after it, and the pick becomes n43 at test 0.3144 instead of 0.3374, a gain of 0.023. A1-off runs without policies, so this is a replay, not a measured condition.
 
+## C6 live session
+
+One session, seed 100, oversight only ([`spooky-c6.md`](spooky-c6.md)). Test **0.3684**, 0.0001 from the run's best node, and worse than every C1 seed.
+
+- **12 interventions:** 9 prunes, 2 redirects and 1 finding correction.
+- **The C4 rule:** replayed over the session, it fires once (n37, after n42's divergence), the same prune the participant made. The participant's other 8 prunes followed a budget cue the rule doesn't have: a branch far behind the best with little time left.
+- **Both redirects produced nothing:** a redirect chooses which node to improve, not what the agent changes.
+- **The probe-best node (n30) was worse on test** than the validation-best pick.
+
 ## Main findings
 
 1. **A1 kept validation honest.** In the 11 runs with A1, the pick's test score stayed within 0.015 of its validation score. Without A1, the gap was 0.023 on seed 0 and **0.132 on seed 1**. On seed 1 the agent stacked its models with a logistic regression fitted on its own validation split and scored on that same split. Validation fell to 0.205 while test stayed at 0.337, and the submitted node ranked 27th of 55 on test.
@@ -78,5 +88,4 @@ Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: med
 
 ## Next
 
-- **The C6 session on spooky** (seed 100).
 - **After the half plan:** C5 could require the probe to disagree in direction before deleting a "hurts" finding, and A1-off with C4 could become a real condition.
