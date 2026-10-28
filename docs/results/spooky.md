@@ -87,6 +87,8 @@ One session, seed 100, oversight only ([`spooky-c6.md`](spooky-c6.md)). Test **0
 - One model, and no pretrained models offline.
 - C4 and C5's thresholds came from a handful of pilots. C5's check on "hurts" findings treats a smaller harm on the probe as a failure (see above).
 - C4's gain without A1 is a replay. A condition combining A1-off with C4 isn't in the grid.
+- We are not ML experts, so our C6 judgement may be worse than an expert's. An expert might have spotted that C6's agent was avoiding naive Bayes, a gap worth about 0.03 on test.
+- **Spooky is public.** It is an old Kaggle competition, so its winning approaches are online, and may be in the model's training data. That is why the participant did not search online during the session. On tasks whose solutions are not public, such as a private held-out set in the spirit of Humanity's Last Exam, both the agent and the monitor could be allowed to search, with no risk of copying a known answer. More resources could give both of them more insight, and a fairer test of what a human adds.
 
 ## Next
 

@@ -94,6 +94,7 @@ This is one run, so it's suggestive, not proof. Other C6 factors may matter too:
 **What it means for the monitors:**
 - **Findings can be true and still harmful.** A finding that compares two single models can be right and still steer the search away from a combination that would win. C5's rule checks whether a finding's evidence replicates on the probe. It would not catch this, since the evidence did replicate on test.
 - **A monitor needs to know what is missing, not just what is wrong.** The participant noticed this finding at 11:16 and chose not to act, on probe evidence that turned out to be noise. What would have helped is knowing that "prefer X over NB" closes off a direction. That's expertise, which the session's rules (oversight only) kept out.
+- **This is where an expert would help.** Recognising that "prefer TF-IDF over NB" rules out a combination that usually works on text classification takes field experience. We are not ML experts. The participant also did not search online during the session, to stay in the same position as the agent, which works offline. So the participant could not have known, and noticed the finding without seeing why it mattered. An expert monitor might have corrected it, or suggested the combination, and gained about 0.03 (see the check below). That is a kind of oversight a scripted rule like C5 cannot provide.
 
 ## C1 seed 0, the exception
 
@@ -126,3 +127,4 @@ So the missing NB component accounts for about 0.03 of C6's deficit. That's abou
 - 14 runs, one task. Which family a run ends up in also depends on its seed's drafts.
 - The model families are read from the submitted script with a simple text search, not by running it.
 - The "why" section is our interpretation of the paths. The check above is a single ablation, on one run.
+- **Spooky is public.** It is an old Kaggle competition, so its winning approaches are online, and may be in the model's training data. That is why the participant did not search online during the session. On tasks whose solutions are not public, such as a private held-out set in the spirit of Humanity's Last Exam, both the agent and the monitor could be allowed to search, with no risk of copying a known answer. More resources could give both of them more insight, and a fairer test of what a human adds.

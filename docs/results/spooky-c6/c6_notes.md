@@ -66,3 +66,5 @@ Written at 12:55, after the run ended at 12:50. The participant's answers, tidie
 ## Limitations to report
 
 - **Not an ML expert.** The participant is a student, not an experienced Kaggle or MLE practitioner, so their judgement (which branches to prune, which node to submit) may be worse than an expert's. C6 shows what a non-expert monitor does with the dashboard, not the best a human monitor could do. (Raised by the participant during the session, 12:05.)
+- **No online search, by choice.** The participant did not search online during the session, to stay in the same position as the offline agent, and so could not tell that "prefer TF-IDF over NB" ruled out a combination worth about 0.03 on test (`docs/results/spooky-drops.md`). An expert might have.
+- **Public task.** Spooky's solutions are online. On tasks whose solutions are not public (for example a private held-out set in the spirit of Humanity's Last Exam), the agent and the monitor could both be allowed to search, giving both more resources without the risk of copying a known answer.

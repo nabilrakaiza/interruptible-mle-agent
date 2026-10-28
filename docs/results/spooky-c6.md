@@ -73,6 +73,8 @@ The participant also chose **not** to act on two things. Both were right in hind
 - One session, by a team member who knows the agent and had seen the other spooky runs, with no separate observer.
 - The participant is not an ML expert, so C6 shows what a non-expert monitor does, not the best a human monitor could do.
 - An assistant explained the dashboard during the session.
+- **No online search, by choice.** The participant did not look anything up during the session, to stay in the same position as the agent, which works offline. Without ML expertise, that meant missing what an expert might have seen: the agent's finding "prefer TF-IDF over NB" ruled out the naive Bayes + linear combination that the best spooky runs used. Adding it to the pick improves test by 0.033 ([`spooky-drops.md`](spooky-drops.md)).
+- **Spooky is public.** It is an old Kaggle competition, so its winning approaches are online, and may be in the model's training data. That is why the participant did not search online during the session. On tasks whose solutions are not public, such as a private held-out set in the spirit of Humanity's Last Exam, both the agent and the monitor could be allowed to search, with no risk of copying a known answer. More resources could give both of them more insight, and a fairer test of what a human adds.
 - The script's 100 "human minutes" is the span from opening the dashboard to the last action. Actual attention was about one check every 10 minutes.
 
 ## Files
