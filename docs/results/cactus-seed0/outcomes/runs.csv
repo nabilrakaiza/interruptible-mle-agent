@@ -1,0 +1,8 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_aerial-cactus-identification_seed0,aerial-cactus-identification,0,A1-off,0.99972,True,True,False
+A4-off_aerial-cactus-identification_seed0,aerial-cactus-identification,0,A4-off,0.99961,True,True,False
+C1_aerial-cactus-identification_seed0,aerial-cactus-identification,0,C1,0.99977,True,True,False
+C1_aerial-cactus-identification_seed0,aerial-cactus-identification,0,C2 (post hoc),0.99982,True,True,False
+C1_aerial-cactus-identification_seed0,aerial-cactus-identification,0,"C3 (post hoc, k=3)",0.99977,True,True,False
+C4_aerial-cactus-identification_seed0,aerial-cactus-identification,0,C4,0.99936,True,True,False
+C5_aerial-cactus-identification_seed0,aerial-cactus-identification,0,C5,0.99999,True,True,False
