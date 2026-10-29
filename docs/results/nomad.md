@@ -21,8 +21,9 @@ Nomad predicts two properties of candidate transparent conductors (formation ene
 | C5 | 0.06089 | 0.06226 | 0.06123 | 0.06146 |
 | A1-off | 0.06131 | 0.06072 | n/a | 0.06102 |
 | A4-off | 0.05649 | 0.06165 | n/a | 0.05907 |
+| C6 (seed 100) | 0.06137 | | | |
 
-- **Every run medalled:** 12 silver and 1 bronze, C1 seed 2. Nomad is the only task where any run medalled.
+- **Every run medalled:** 12 silver and 1 bronze, C1 seed 2. Nomad is the only task where any run medalled. The C6 session also got silver.
 - **No condition is clearly better than another.** C1 alone ranges over 0.0054 across seeds, more than the largest gap between two conditions' means (0.0032).
 - **C2 beats C1 on all three seeds,** by 0.0001 to 0.0014. C3 recovers part of it.
 
@@ -43,6 +44,21 @@ The probe loss held in 96% of bootstrap resamples both times, above the rule's 9
 
 Whether the prunes helped can't be read from these numbers: C4 seed 0 scored 0.06128 against C1 seed 0's 0.05991, but they are different runs. Without the run folders here, the C4 rule can't be replayed over the C1 runs.
 
+## C6 live session
+
+Sahi ran one C6 session on 29 Oct, seed 100, with a 2-hour budget, DeepSeek V4 Flash and A1. The notes, the debrief and the logs are in [`nomad/c6/`](nomad/c6/c6_notes.md).
+
+- **Result:** 89 nodes. The submitted node was n83, at test **0.06137** (silver). That is better than C1's mean (0.06229), but it's one session, so it doesn't show that the intervention helped.
+- **One intervention:** a prune of n22 and its subtree, about 35 minutes in. n22 was a debug of a crashed node, and it was worse than its ancestor n17 on both scores: validation 0.0628 → 0.0888, probe 0.0648 → 0.0909.
+- **Why the C4 rule wouldn't make that prune:** the rule looks for validation improving while the probe gets worse. Here both got worse. Replayed over the session, the C4 rule fires 0 times. It's the same kind of prune as most of the spooky and cactus ones: a weak branch, not a divergence.
+- **What the participant chose not to act on:** individual failed attempts, and small gaps between validation and probe. At 60 minutes, n25 improved validation but had a worse probe than n10. The participant judged the gap too small to act on.
+- **Attention:** the dashboard log shows check-ins throughout the run, with about 10 minutes of recorded dashboard time before the prune.
+- **What the participant would have wanted to see:** trends of validation against probe along one branch, the effect of an intervention, and whether a weak branch is likely to be explored again.
+- **Limitations from the notes:**
+  - the session had an internet interruption and a temporary stall;
+  - the prune was informed partly by discussion outside the dashboard;
+  - the annotated trajectory couldn't be generated because of a Windows text-encoding error.
+
 ## Validation against test
 
 Mean gap between the submitted node's validation and test scores (from `analysis/val_test_gap/`):
@@ -58,4 +74,3 @@ A1-off has the largest gap, as on spooky: without A1, validation is optimistic. 
 - **Two C1 runs barely searched:** seed 1 made 17 nodes in 2.76 hours, and seed 2 made 14 nodes in 3.72 hours, against 63 to 82 nodes for the C4 runs. C1 is the baseline, so this weakens every comparison with it. The package says some runs exceeded the 2-hour budget but not why.
 - **Mixed providers:** six runs, including all three C1 runs, were served partly or fully by providers other than Baidu (CoreWeave, DeepInfra, BaseTen). All are fp8 by configuration, but C1 seeds 1 and 2 are exactly the slow runs.
 - **The machine and Docker setup** aren't recorded.
-- **There's no C6 session** for nomad yet.

@@ -6,7 +6,7 @@ All four tasks now have results, but not all of them are complete:
 |---|---|---|---|---|
 | **spooky** | text | Nabil | 13 of 13 | 1 session |
 | **cactus** | image | Dziand | 13 of 13 | 1 session, plus 1 unwatched run |
-| **nomad** | tabular | Sahi | 13 of 13 | none yet |
+| **nomad** | tabular | Sahi | 13 of 13 | 1 session |
 | **leaf** | image + tabular | Medhini | **2 of 13** (C1 and C4, seed 0), run by Nabil | none yet |
 
 Each task has its own write-up:
@@ -41,10 +41,10 @@ All four used the same setup:
 | C5 | 0.3340 | 0.99970 | 0.06146 | |
 | A1-off | 0.3375 | 0.99982 | 0.06102 | |
 | A4-off | 0.3506 | 0.99950 | 0.05907 | |
-| C6 | 0.3684 | 0.99953 | | |
+| C6 | 0.3684 | 0.99953 | 0.06137 | |
 
 **Medals:**
-- Nomad: every run (12 silver, 1 bronze).
+- Nomad: every run (12 silver, 1 bronze), and the C6 session (silver).
 - Spooky and cactus: none. Cactus's medals need a perfect AUC of 1.0.
 - Leaf: none, and C4 fell below the median.
 
@@ -63,8 +63,8 @@ All four used the same setup:
 | C5 fired live | 1 of 3 (a false positive) | 0 of 3 | 1 of 3 (seed 0, twice, on crashed nodes) | not run |
 | C4 rule replayed | fires once: A1-off seed 1, test 0.337 → 0.314 | never | (run folders not available) | never (64% of resamples at n43; needs 95%) |
 | C5 rule replayed | A1-off seed 1 only, no effect | twice, no effect | (not available) | 9 findings over 2 runs, on probe noise |
-| C6 interventions | 12 (9 prunes) | 8 (all prunes) | | |
-| C6 prunes that C4 agrees with | 1 of 9 | 0 of 8 | | |
+| C6 interventions | 12 (9 prunes) | 8 (all prunes) | 1 (a prune) | |
+| C6 prunes that C4 agrees with | 1 of 9 | 0 of 8 | 0 of 1 | |
 
 ## Main findings
 
@@ -93,9 +93,9 @@ All four used the same setup:
 
 ### 3. People at the dashboard mostly pruned waste
 
-Spooky and cactus only; no C6 on nomad or leaf yet.
-- **Of 17 live prunes, one acted on a real divergence:** spooky's n37, the same prune the C4 rule makes.
-- **The rest followed cues the rule doesn't have:** branches far behind with little time left, the wrong model family, regressions.
+Spooky, cactus and nomad; no C6 on leaf yet.
+- **Of 18 live prunes, one acted on a real divergence:** spooky's n37, the same prune the C4 rule makes.
+- **The rest followed cues the rule doesn't have:** branches far behind with little time left, the wrong model family, regressions. Nomad's one prune was a debug that made both validation and probe worse (0.063 → 0.089 on validation), a weak branch rather than a divergence.
 - **None changed a submission.**
 
 ### 4. Final selection matters most where held-out splits are small
@@ -138,6 +138,10 @@ A person can still see a leaf-style divergence on the dashboard. The question is
   - progress before the first node finishes;
   - which node the search will extend next;
   - duplicates marked.
+- **Nomad:**
+  - trends of validation against probe along one branch;
+  - the effect of an intervention;
+  - whether a weak branch is likely to be explored again.
 
 ## Limitations
 
@@ -152,11 +156,12 @@ A person can still see a leaf-style divergence on the dashboard. The question is
 - **Thresholds from pilots.** C4 and C5's thresholds came from a few pilots. C5's check on "hurts" findings treats a smaller harm on the probe as a failure.
 - **C4 without A1 is a replay** on spooky.
 - **The C6 sessions:**
-  - only two, on spooky and cactus, by team members who aren't ML experts;
-  - the assistant only explained the dashboard on spooky, but suggested every intervention on cactus.
-- **All four tasks are public Kaggle competitions.** Their winning approaches are online and may be in the model's training data. Neither participant searched online, to stay in the same position as the agent.
+  - only three, on spooky, cactus and nomad, by team members who aren't ML experts;
+  - the assistant only explained the dashboard on spooky, but suggested every intervention on cactus;
+  - the nomad prune was partly informed by discussion outside the dashboard, and that session had an internet interruption.
+- **All four tasks are public Kaggle competitions.** Their winning approaches are online and may be in the model's training data. The spooky and cactus participants didn't search online, to stay in the same position as the agent.
 
 ## Still to come
 
 - **Leaf:** Medhini's runs, and a C6 session.
-- **Nomad:** a C6 session, and answers on the short C1 runs, the providers and the machine.
+- **Nomad:** answers on the short C1 runs, the providers and the machine.
