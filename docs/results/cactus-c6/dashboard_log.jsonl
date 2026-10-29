@@ -1,0 +1,26 @@
+{"ts": "2026-10-28T11:18:23.743575+00:00", "session": "d7b79fbf", "event": "session_start"}
+{"ts": "2026-10-28T11:20:25.441229+00:00", "session": "89241a34", "event": "session_start"}
+{"ts": "2026-10-28T11:27:49.328126+00:00", "session": "89241a34", "event": "view_node", "node": "n0", "step": 2}
+{"ts": "2026-10-28T12:03:54.964436+00:00", "session": "89241a34", "event": "queue", "intervention": "q-8141d0f3", "action": "prune", "target": "n0"}
+{"ts": "2026-10-28T12:03:59.957389+00:00", "session": "89241a34", "event": "view_node", "node": "n1", "step": 12}
+{"ts": "2026-10-28T12:04:06.765214+00:00", "session": "89241a34", "event": "queue", "intervention": "q-eea4b33d", "action": "prune", "target": "n1"}
+{"ts": "2026-10-28T12:04:10.719307+00:00", "session": "89241a34", "event": "view_node", "node": "n3", "step": 12}
+{"ts": "2026-10-28T12:04:13.345662+00:00", "session": "89241a34", "event": "queue", "intervention": "q-b61d954e", "action": "prune", "target": "n3"}
+{"ts": "2026-10-28T12:04:17.673622+00:00", "session": "89241a34", "event": "view_node", "node": "n4", "step": 12}
+{"ts": "2026-10-28T12:05:02.852941+00:00", "session": "89241a34", "event": "queue", "intervention": "q-d4fc6beb", "action": "prune", "target": "n4"}
+{"ts": "2026-10-28T12:14:20.729885+00:00", "session": "89241a34", "event": "view_node", "node": "n2", "step": 16}
+{"ts": "2026-10-28T12:25:47.999855+00:00", "session": "89241a34", "event": "view_node", "node": "n12", "step": 19}
+{"ts": "2026-10-28T12:26:01.027318+00:00", "session": "89241a34", "event": "view_node", "node": "n15", "step": 19}
+{"ts": "2026-10-28T12:27:14.043559+00:00", "session": "89241a34", "event": "queue", "intervention": "q-f8b8575b", "action": "prune", "target": "n15"}
+{"ts": "2026-10-28T12:27:17.072017+00:00", "session": "89241a34", "event": "view_node", "node": "n12", "step": 20}
+{"ts": "2026-10-28T12:27:28.933918+00:00", "session": "89241a34", "event": "queue", "intervention": "q-7283f12d", "action": "prune", "target": "n12"}
+{"ts": "2026-10-28T12:35:19.902132+00:00", "session": "89241a34", "event": "view_node", "node": "n19", "step": 23}
+{"ts": "2026-10-28T12:37:30.823514+00:00", "session": "89241a34", "event": "view_node", "node": "n13", "step": 24}
+{"ts": "2026-10-28T12:43:50.775954+00:00", "session": "89241a34", "event": "view_node", "node": "n22", "step": 27}
+{"ts": "2026-10-28T12:44:07.908218+00:00", "session": "89241a34", "event": "queue", "intervention": "q-0de16c8b", "action": "prune", "target": "n22"}
+{"ts": "2026-10-28T12:44:27.089377+00:00", "session": "89241a34", "event": "view_node", "node": "n5", "step": 27}
+{"ts": "2026-10-28T12:44:44.518841+00:00", "session": "89241a34", "event": "queue", "intervention": "q-a61603ff", "action": "prune", "target": "n5"}
+{"ts": "2026-10-28T12:58:41.317610+00:00", "session": "89241a34", "event": "view_node", "node": "n23", "step": 30}
+{"ts": "2026-10-28T13:00:18.740091+00:00", "session": "89241a34", "event": "view_node", "node": "n9", "step": 30}
+{"ts": "2026-10-28T13:00:44.424968+00:00", "session": "89241a34", "event": "view_node", "node": "n10", "step": 30}
+{"ts": "2026-10-28T13:01:13.811244+00:00", "session": "89241a34", "event": "view_node", "node": "n14", "step": 30}

@@ -1,0 +1,8 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_spooky-author-identification_seed0,spooky-author-identification,0,A1-off,0.33765,True,True,False
+A4-off_spooky-author-identification_seed0,spooky-author-identification,0,A4-off,0.33613,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C1,0.36063,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C2 (post hoc),0.36063,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,"C3 (post hoc, k=3)",0.36063,True,True,False
+C4_spooky-author-identification_seed0,spooky-author-identification,0,C4,0.38082,True,True,False
+C5_spooky-author-identification_seed0,spooky-author-identification,0,C5,0.36322,True,True,False
