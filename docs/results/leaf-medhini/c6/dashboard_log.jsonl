@@ -1,0 +1,6 @@
+{"ts": "2026-10-29T06:11:21.111139+00:00", "session": "b3c5dd81", "event": "session_start"}
+{"ts": "2026-10-29T06:11:51.464201+00:00", "session": "b3c5dd81", "event": "view_node", "node": "n0", "step": 1}
+{"ts": "2026-10-29T06:26:46.126182+00:00", "session": "b3c5dd81", "event": "view_node", "node": "n4", "step": 6}
+{"ts": "2026-10-29T07:15:52.722862+00:00", "session": "b3c5dd81", "event": "view_node", "node": "n19", "step": 30}
+{"ts": "2026-10-29T07:27:03.661755+00:00", "session": "889a1546", "event": "session_start"}
+{"ts": "2026-10-29T07:27:03.958473+00:00", "session": "889a1546", "event": "view_node", "node": "n33", "step": 34}
