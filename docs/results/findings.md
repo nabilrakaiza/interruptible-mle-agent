@@ -12,7 +12,7 @@ All four tasks now have results, but not all of them are complete:
 Each task has its own write-up:
 - [`spooky.md`](spooky.md), with [`spooky-c6.md`](spooky-c6.md) and [`spooky-drops.md`](spooky-drops.md)
 - [`cactus.md`](cactus.md), with [`cactus-c6.md`](cactus-c6.md)
-- [`nomad.md`](nomad.md), a summary of Sahi's package in [`../../results/nomad2018/`](../../results/nomad2018/README.md)
+- [`nomad.md`](nomad.md), a summary of Sahi's package in [`nomad/`](nomad/README.md)
 - [`leaf-seed0.md`](leaf-seed0.md)
 
 ## Setup
