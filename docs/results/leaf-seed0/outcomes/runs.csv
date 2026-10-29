@@ -1,5 +1,0 @@
-run,task,seed,condition,score,valid_submission,above_median,any_medal
-C1_leaf-classification_seed0,leaf-classification,0,C1,0.10175,True,True,False
-C1_leaf-classification_seed0,leaf-classification,0,C2 (post hoc),0.03568,True,True,False
-C1_leaf-classification_seed0,leaf-classification,0,"C3 (post hoc, k=3)",0.09564,True,True,False
-C4_leaf-classification_seed0,leaf-classification,0,C4,0.34888,True,False,False
