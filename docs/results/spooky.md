@@ -6,6 +6,7 @@ The half plan's 13 runs on `spooky-author-identification`: seeds 0, 1 and 2 of C
 - [`spooky-seed1.md`](spooky-seed1.md): all five conditions, seed 1
 - [`spooky-seed2.md`](spooky-seed2.md): C1, C4 and C5, seed 2
 - [`spooky-seed0-4h.md`](spooky-seed0-4h.md): seed 0 of all five conditions extended to 4 hours, the first step of the full plan
+- [`spooky-seed1-4h.md`](spooky-seed1-4h.md): seed 1 of all five conditions extended to 4 hours; C5 reaches bronze
 - [`spooky-c6.md`](spooky-c6.md): the C6 live session, seed 100
 - [`spooky-drops.md`](spooky-drops.md): where the big drops come from, across all 14 runs
 
