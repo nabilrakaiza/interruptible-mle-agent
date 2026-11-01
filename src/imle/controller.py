@@ -328,10 +328,11 @@ def machine_info() -> dict:
     Saved with every run so that results can be compared on the same kind of machine:
     a 4-hour budget buys less search on a slower one.
     """
-    if "COLAB_RELEASE_TAG" in os.environ or "COLAB_GPU" in os.environ:
-        where = "colab"
-    elif "KAGGLE_KERNEL_RUN_TYPE" in os.environ:
+    # Kaggle first: its image is built on Colab's and sets the Colab variables too.
+    if "KAGGLE_KERNEL_RUN_TYPE" in os.environ:
         where = "kaggle"
+    elif "COLAB_RELEASE_TAG" in os.environ or "COLAB_GPU" in os.environ:
+        where = "colab"
     else:
         where = "local"
     try:
