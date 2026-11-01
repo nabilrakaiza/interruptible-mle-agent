@@ -1,0 +1,40 @@
+# The full plan for insults and pizza on Kaggle (docs/cloud-runs.md, "The full plan on Kaggle").
+# 42 runs at 4 hours, two per Kaggle session (a session ends at 12 hours, so three would not fit).
+# notebooks/kaggle_run.ipynb runs the session its SESSION setting names; scripts/kaggle_collect.py
+# downloads and checks them. Session s runs in notebook imle-slot-<(s - 1) % 5 + 1>, five at a time:
+#     round 1: sessions 1-5, seed 0 of every condition
+#     round 2: sessions 6-10, seed 1
+#     round 3: sessions 11-15, seed 2
+#     round 4: sessions 16-20, seeds 3 and 4 of C1, C4 and C5
+#     round 5: session 21
+# Each session runs one condition and seed on both tasks, so a round leaves whole seeds behind.
+
+budget_hours: 4
+slots: 5
+
+sessions:
+  1:  {config: c1_autonomous.yaml, seed: 0}
+  2:  {config: c4_divergence_prune.yaml, seed: 0}
+  3:  {config: c5_finding_correction.yaml, seed: 0}
+  4:  {config: ablation_a1_off.yaml, seed: 0}
+  5:  {config: ablation_a4_off.yaml, seed: 0}
+  6:  {config: c1_autonomous.yaml, seed: 1}
+  7:  {config: c4_divergence_prune.yaml, seed: 1}
+  8:  {config: c5_finding_correction.yaml, seed: 1}
+  9:  {config: ablation_a1_off.yaml, seed: 1}
+  10: {config: ablation_a4_off.yaml, seed: 1}
+  11: {config: c1_autonomous.yaml, seed: 2}
+  12: {config: c4_divergence_prune.yaml, seed: 2}
+  13: {config: c5_finding_correction.yaml, seed: 2}
+  14: {config: ablation_a1_off.yaml, seed: 2}
+  15: {config: ablation_a4_off.yaml, seed: 2}
+  16: {config: c1_autonomous.yaml, seed: 3}
+  17: {config: c4_divergence_prune.yaml, seed: 3}
+  18: {config: c5_finding_correction.yaml, seed: 3}
+  19: {config: c1_autonomous.yaml, seed: 4}
+  20: {config: c4_divergence_prune.yaml, seed: 4}
+  21: {config: c5_finding_correction.yaml, seed: 4}
+
+tasks:
+  - detecting-insults-in-social-commentary
+  - random-acts-of-pizza
