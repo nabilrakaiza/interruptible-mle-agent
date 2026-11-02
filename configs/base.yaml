@@ -44,6 +44,8 @@ llm:
     sort: price              # each call goes to the cheapest available provider, then the next cheapest
     quantizations: [fp8]     # one precision for every call, so all conditions see the same weights
     max_price: {prompt: 0.15, completion: 0.30}  # USD per million tokens; above it calls fail, not cost more
+    ignore: [StreamLake]     # from 2 Nov: 9% of its calls used all 64k tokens on reasoning (about 10 minutes each,
+                             # no script), against none of 184 elsewhere; a run lost up to 112 of its 240 minutes
   outage_retries: 5          # failed LLM calls in a row before the run stops (resumable with --resume)
   outage_wait_s: 30          # wait after a failed call, doubling each time, at most 5 minutes
 sandbox:
