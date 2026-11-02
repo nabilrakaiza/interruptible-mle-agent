@@ -49,8 +49,18 @@ def run_names(plan: dict, session: int, test: bool) -> list[str]:
 
 
 def download(kaggle: str, ref: str, dest: Path) -> None:
-    """The notebook's latest output, into dest."""
-    subprocess.run([kaggle, "kernels", "output", ref, "-p", str(dest), "-o", "-q"], check=True)
+    """The notebook's latest output, into dest: session.json and runs.tar.gz unpacked, else every file.
+
+    The CLI fetches files one by one, thousands per session, so the notebook packs the runs into one
+    archive; outputs from before it did are downloaded file by file.
+    """
+    base = [kaggle, "kernels", "output", ref, "-p", str(dest), "-o", "-q"]
+    subprocess.run([*base, "--file-pattern", r"^(session\.json|runs\.tar\.gz)$"], check=True)
+    archive = dest / "runs.tar.gz"
+    if archive.exists():
+        subprocess.run(["tar", "-xzf", str(archive), "-C", str(dest)], check=True)
+    else:
+        subprocess.run(base, check=True)
 
 
 def collect(plan: dict, session: int, args: argparse.Namespace) -> list[Path]:
