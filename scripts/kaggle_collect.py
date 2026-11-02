@@ -52,9 +52,10 @@ def download(kaggle: str, ref: str, dest: Path) -> None:
     """The notebook's latest output, into dest: session.json and runs.tar.gz unpacked, else every file.
 
     The CLI fetches files one by one, thousands per session, so the notebook packs the runs into one
-    archive; outputs from before it did are downloaded file by file.
+    archive; outputs from before it did are downloaded file by file. Pages of 200 (the CLI's default is
+    20) keep that under Kaggle's request limit.
     """
-    base = [kaggle, "kernels", "output", ref, "-p", str(dest), "-o", "-q"]
+    base = [kaggle, "kernels", "output", ref, "-p", str(dest), "-o", "-q", "--page-size", "200"]
     subprocess.run([*base, "--file-pattern", r"^(session\.json|runs\.tar\.gz)$"], check=True)
     archive = dest / "runs.tar.gz"
     if archive.exists():
