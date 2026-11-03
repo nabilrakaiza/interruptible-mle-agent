@@ -1,0 +1,38 @@
+{
+  "task": "detecting-insults-in-social-commentary",
+  "condition": "C5",
+  "seed": 3,
+  "final_node": "n33",
+  "final_selection": "best_val",
+  "submitted": true,
+  "score": 0.90202,
+  "valid_submission": true,
+  "above_median": true,
+  "any_medal": true,
+  "gold_medal": true,
+  "silver_medal": false,
+  "bronze_medal": false,
+  "median_threshold": 0.77842,
+  "bronze_threshold": 0.79111,
+  "silver_threshold": 0.82307,
+  "gold_threshold": 0.83321,
+  "is_lower_better": false,
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "score": 0.90202,
+      "valid_submission": true,
+      "above_median": true,
+      "any_medal": true,
+      "gold_medal": true,
+      "silver_medal": false,
+      "bronze_medal": false,
+      "median_threshold": 0.77842,
+      "bronze_threshold": 0.79111,
+      "silver_threshold": 0.82307,
+      "gold_threshold": 0.83321,
+      "is_lower_better": false
+    }
+  ],
+  "graded_at": "2026-11-03T15:35:59.949104+00:00"
+}
