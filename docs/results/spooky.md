@@ -9,6 +9,7 @@ The half plan's 13 runs on `spooky-author-identification`: seeds 0, 1 and 2 of C
 - [`spooky-seed1-4h.md`](spooky-seed1-4h.md): seed 1 of all five conditions extended to 4 hours; C5 reaches bronze
 - [`spooky-seed2-4h.md`](spooky-seed2-4h.md): seed 2 of C1, C4 and C5 extended to 4 hours, and A1-off seed 2 (new, 4 hours); A1-off doesn't leak this time
 - [`spooky-night5.md`](spooky-night5.md): A4-off seed 2 and C1 seed 3, new 4-hour runs; C1 seed 3 is the weakest C1 and never used naive Bayes
+- [`spooky-night6.md`](spooky-night6.md): C4 and C5 seed 3, new 4-hour runs without StreamLake; both picks combine naive Bayes with a linear model, and C5 keeps the best mean
 - [`spooky-c6.md`](spooky-c6.md): the C6 live session, seed 100
 - [`spooky-drops.md`](spooky-drops.md): where the big drops come from, across all 14 runs
 
