@@ -40,9 +40,9 @@ Pizza is binary AUC, so **higher is better**. MLE-bench thresholds: median 0.599
 - **C1 leads on mean by 0.010** and has the most bronzes: 4 of 5, against 5 of 15 for the other four conditions together.
 - **That's suggestive, not settled:** each condition's own range (0.025 for C1, 0.039 for C4, 0.053 for A4-off) is wider than the gaps between means, and the bronze line (0.692) sits in the middle of where pizza runs land.
 
-### 2. C4 pruned live for the first time on pizza, and it didn't change the pick
+### 2. C4 pruned live on seed 4, and it didn't change the pick
 
-On seed 4, C4 fired twice: after n54 it pruned n51's subtree (4 nodes), and after n72 n57's (14 nodes). In both, validation had risen since n50 while the probe fell (+1.0% against −4.7%, and +3.0% against −6.7%).
+On seed 4, C4 fired twice (its only other live prune on pizza was on seed 0, see [`pizza-seed0.md`](pizza-seed0.md)): after n54 it pruned n51's subtree (4 nodes), and after n72 n57's (14 nodes). In both, validation had risen since n50 while the probe fell (+1.0% against −4.7%, and +3.0% against −6.7%).
 - **Neither prune touched the pick.** The pick, n15, came from step 15, and no later node beat its validation. The pruned subtrees' best validation was 0.666 and 0.677, against n15's 0.694.
 - **The pruned branches weren't the good ones either:** their best test scores were 0.662 and 0.680.
 - **The run's loss was in the pick, not the prunes:** n15 had validation 0.694 and test 0.667, while the best node on test, n105 (0.684), sat at 0.661 on validation.
