@@ -30,7 +30,7 @@ Spooky is multiclass log loss, so **lower is better**. MLE-bench thresholds: med
 
 ### 1. C1 seed 4 barely used naive Bayes, and stayed above 0.36
 
-The pick is three logistic regressions, with no naive Bayes. Only 5 of the 48 nodes used naive Bayes at all, and no node scored below 0.36. That matches C1 seed 3 (0.367, 2 of 32 nodes with naive Bayes) and the pattern in [`spooky-drops.md`](spooky-drops.md): every spooky run below 0.34 submitted naive Bayes combined with a linear model.
+The pick is a single logistic regression on word and character TF-IDF features, with no naive Bayes. Only 5 of the 48 nodes used naive Bayes at all, and no node scored below 0.36. That matches C1 seed 3 (0.367, 2 of 32 nodes with naive Bayes) and the pattern in [`spooky-drops.md`](spooky-drops.md): every spooky run below 0.34 submitted naive Bayes combined with a linear model.
 
 So C1's two weakest seeds are the two that didn't find that combination. On spooky, which model family the agent lands on seems to matter more than the condition.
 
