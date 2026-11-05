@@ -1,0 +1,32 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_leaf-classification_seed0,leaf-classification,0,A1-off,0.00932,True,True,True
+A1-off_leaf-classification_seed1,leaf-classification,1,A1-off,15.65532,True,False,False
+A4-off_leaf-classification_seed0,leaf-classification,0,A4-off,0.36408,True,False,False
+A4-off_leaf-classification_seed1,leaf-classification,1,A4-off,0.0,True,True,True
+C1_leaf-classification_seed0,leaf-classification,0,C1,0.02724,True,True,False
+C1_leaf-classification_seed0,leaf-classification,0,C2 (post hoc),0.02724,True,True,False
+C1_leaf-classification_seed0,leaf-classification,0,"C3 (post hoc, k=3)",0.02724,True,True,False
+C1_leaf-classification_seed1,leaf-classification,1,C1,0.0021,True,True,True
+C1_leaf-classification_seed1,leaf-classification,1,C2 (post hoc),0.0,True,True,True
+C1_leaf-classification_seed1,leaf-classification,1,"C3 (post hoc, k=3)",0.0021,True,True,True
+C1_leaf-classification_seed2,leaf-classification,2,C1,0.00896,True,True,True
+C1_leaf-classification_seed2,leaf-classification,2,C2 (post hoc),0.00558,True,True,True
+C1_leaf-classification_seed2,leaf-classification,2,"C3 (post hoc, k=3)",0.00896,True,True,True
+C4_leaf-classification_seed0,leaf-classification,0,C4,0.00311,True,True,True
+C4_leaf-classification_seed1,leaf-classification,1,C4,0.34888,True,False,False
+C4_leaf-classification_seed2,leaf-classification,2,C4,0.03113,True,True,False
+C5_leaf-classification_seed0,leaf-classification,0,C5,0.36408,True,False,False
+C5_leaf-classification_seed1,leaf-classification,1,C5,0.0183,True,True,False
+C5_leaf-classification_seed2,leaf-classification,2,C5,0.34888,True,False,False
+A1-off_leaf-classification_seed2,leaf-classification,2,A1-off,0.69775,True,False,False
+A4-off_leaf-classification_seed2,leaf-classification,2,A4-off,0.36429,True,False,False
+C1_leaf-classification_seed3,leaf-classification,3,C1,0.34888,True,False,False
+C1_leaf-classification_seed3,leaf-classification,3,C2 (post hoc),0.0,True,True,True
+C1_leaf-classification_seed3,leaf-classification,3,"C3 (post hoc, k=3)",0.0,True,True,True
+C1_leaf-classification_seed4,leaf-classification,4,C1,0.03714,True,True,False
+C1_leaf-classification_seed4,leaf-classification,4,C2 (post hoc),0.00466,True,True,True
+C1_leaf-classification_seed4,leaf-classification,4,"C3 (post hoc, k=3)",0.03622,True,True,False
+C4_leaf-classification_seed3,leaf-classification,3,C4,0.07856,True,True,False
+C4_leaf-classification_seed4,leaf-classification,4,C4,0.05514,True,True,False
+C5_leaf-classification_seed3,leaf-classification,3,C5,0.07051,True,True,False
+C5_leaf-classification_seed4,leaf-classification,4,C5,0.02816,True,True,False
