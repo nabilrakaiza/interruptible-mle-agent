@@ -1,5 +1,7 @@
 # Findings of the half plan
 
+> The full plan (21 runs per task at 4 hours) is summarised in [`full-plan.md`](full-plan.md): spooky, insults and pizza are complete.
+
 All four tasks are complete: 13 grid runs each, and a live session on each.
 
 | Task | Modality | Owner | Grid runs | C6 |
