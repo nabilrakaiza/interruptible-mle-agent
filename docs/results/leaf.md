@@ -1,5 +1,7 @@
 # Leaf: results of the half plan
 
+> **Full plan:** all 21 leaf runs at 4 hours (the 13 below resumed from 2 hours, plus 8 new runs) are in Medhini's package [`leaf/full-4h/`](leaf/full-4h/findings.md). This page covers the half plan.
+
 Medhini's 13 runs on `leaf-classification`: seeds 0, 1 and 2 of C1, C4 and C5, and seeds 0 and 1 of A1-off and A4-off, plus one C6 session. Medhini's own package, with the grades, outcomes, C6 notes and her findings, is in [`leaf/`](leaf/findings.md). This page summarises it in the format of the other tasks, and every number here comes from that package.
 
 Leaf classifies 99 tree species from leaf images and 192 precomputed shape, margin and texture features. The metric is multiclass log loss, so **lower is better**. MLE-bench thresholds: median 0.1083, bronze 0.0153, silver 0.0079, gold 0.0.

@@ -13,11 +13,11 @@ Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1
 | cactus | image | 13 (half plan) | Dziand's Mac | 1 session |
 | nomad | tabular | 13 (half plan) | Sahi's machine | 1 session |
 
-The run-by-run write-ups (merged here from `result-spooky`, `result-insults` and `result-pizza`):
+The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
 - **spooky:** [`spooky.md`](spooky.md), with the full plan in [`spooky-night8.md`](spooky-night8.md) and the C6 session in [`spooky-c6.md`](spooky-c6.md);
 - **insults:** [`insults-seed0.md`](insults-seed0.md) to [`insults-round5.md`](insults-round5.md), with the full plan in `insults-round5.md` and the C6 session in [`insults-c6.md`](insults-c6.md);
 - **pizza:** [`pizza-seed0.md`](pizza-seed0.md) to [`pizza-round5.md`](pizza-round5.md), with the full plan in `pizza-round5.md`;
-- **leaf** (on `result-leaf`, not merged here): `docs/results/leaf-medhini/full-4h/findings.md` for all 21 runs at 4 hours.
+- **leaf** (merged from `result-leaf`): Medhini's full-plan package in [`leaf/full-4h/`](leaf/full-4h/findings.md), all 21 runs at 4 hours; the earlier 8-run four-hour set is in [`leaf/4h/`](leaf/4h/findings.md).
 
 The rest of this page covers the three complete tasks.
 

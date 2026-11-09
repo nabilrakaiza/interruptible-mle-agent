@@ -16,7 +16,7 @@ Each task has its own write-up:
 - [`spooky.md`](spooky.md), with [`spooky-c6.md`](spooky-c6.md) and [`spooky-drops.md`](spooky-drops.md)
 - [`cactus.md`](cactus.md), with [`cactus-c6.md`](cactus-c6.md)
 - [`nomad.md`](nomad.md), a summary of Sahi's package in [`nomad/`](nomad/README.md)
-- [`leaf.md`](leaf.md), a summary of Medhini's package in [`leaf/`](leaf/findings.md)
+- [`leaf.md`](leaf.md), a summary of Medhini's package in [`leaf/`](leaf/findings.md); the full plan (21 runs at 4 hours) is in [`leaf/full-4h/`](leaf/full-4h/findings.md)
 
 ## Setup
 
