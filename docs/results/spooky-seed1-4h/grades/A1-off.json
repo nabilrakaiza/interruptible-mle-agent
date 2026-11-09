@@ -1,0 +1,38 @@
+{
+  "task": "spooky-author-identification",
+  "condition": "A1-off",
+  "seed": 1,
+  "final_node": "n78",
+  "final_selection": "best_val",
+  "submitted": true,
+  "score": 0.40777,
+  "valid_submission": true,
+  "above_median": true,
+  "any_medal": false,
+  "gold_medal": false,
+  "silver_medal": false,
+  "bronze_medal": false,
+  "median_threshold": 0.418785,
+  "bronze_threshold": 0.29381,
+  "silver_threshold": 0.26996,
+  "gold_threshold": 0.16506,
+  "is_lower_better": true,
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "score": 0.40777,
+      "valid_submission": true,
+      "above_median": true,
+      "any_medal": false,
+      "gold_medal": false,
+      "silver_medal": false,
+      "bronze_medal": false,
+      "median_threshold": 0.418785,
+      "bronze_threshold": 0.29381,
+      "silver_threshold": 0.26996,
+      "gold_threshold": 0.16506,
+      "is_lower_better": true
+    }
+  ],
+  "graded_at": "2026-10-31T01:56:39.578367+00:00"
+}

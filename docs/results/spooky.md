@@ -5,6 +5,13 @@ The half plan's 13 runs on `spooky-author-identification`: seeds 0, 1 and 2 of C
 - [`spooky-seed0.md`](spooky-seed0.md): all five conditions, seed 0
 - [`spooky-seed1.md`](spooky-seed1.md): all five conditions, seed 1
 - [`spooky-seed2.md`](spooky-seed2.md): C1, C4 and C5, seed 2
+- [`spooky-seed0-4h.md`](spooky-seed0-4h.md): seed 0 of all five conditions extended to 4 hours, the first step of the full plan
+- [`spooky-seed1-4h.md`](spooky-seed1-4h.md): seed 1 of all five conditions extended to 4 hours; C5 reaches bronze
+- [`spooky-seed2-4h.md`](spooky-seed2-4h.md): seed 2 of C1, C4 and C5 extended to 4 hours, and A1-off seed 2 (new, 4 hours); A1-off doesn't leak this time
+- [`spooky-night5.md`](spooky-night5.md): A4-off seed 2 and C1 seed 3, new 4-hour runs; C1 seed 3 is the weakest C1 and never used naive Bayes
+- [`spooky-night6.md`](spooky-night6.md): C4 and C5 seed 3, new 4-hour runs without StreamLake; both picks combine naive Bayes with a linear model, and C5 keeps the best mean
+- [`spooky-night7.md`](spooky-night7.md): C1 seed 4, a new 4-hour run; it barely used naive Bayes and stayed above 0.36, like C1 seed 3
+- [`spooky-night8.md`](spooky-night8.md): C4 and C5 seed 4, the last runs, and **the full plan's 21 runs at 4 hours**: C5 has the best mean, A1 matters most, and the naive Bayes rule from `spooky-drops.md` no longer holds strictly
 - [`spooky-c6.md`](spooky-c6.md): the C6 live session, seed 100
 - [`spooky-drops.md`](spooky-drops.md): where the big drops come from, across all 14 runs
 
