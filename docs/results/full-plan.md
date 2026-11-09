@@ -1,21 +1,23 @@
 # Findings of the full plan
 
-Status on 5 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1, C4 and C5 seeds 0 to 4, and A1-off and A4-off seeds 0 to 2. The half plan's findings are in [`findings.md`](findings.md).
+Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1, C4 and C5 seeds 0 to 4, and A1-off and A4-off seeds 0 to 2. The half plan's findings are in [`findings.md`](findings.md).
+
+**Full analysis of spooky, insults and pizza (Nabil):** [Full-plan results](https://claude.ai/artifact/1AHcCcSLLuLfqSGPkTFe5W#aee780ae-bfc4), with a cross-task summary, a tab per task (every run, charts, final models and a report draft), the reliability checks, tree shape and further analyses.
 
 | Task | Modality | Grid runs | Where they ran | C6 |
 |---|---|---|---|---|
 | **spooky** | text | **21 of 21** at 4 h | Nabil's Mac (Docker) | 1 session (2 h) |
-| **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run |
-| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run |
-| leaf | image + tabular | 21, but only 8 at 4 h | Medhini's machine | 1 session |
+| **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | 1 session (2 h) |
+| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run (teammates) |
+| leaf | image + tabular | 21 at 4 h (13 resumed from 2 h) | Medhini's machine | 1 session |
 | cactus | image | 13 (half plan) | Dziand's Mac | 1 session |
 | nomad | tabular | 13 (half plan) | Sahi's machine | 1 session |
 
-The run-by-run write-ups live on each task's result branch:
-- **spooky** (`result-spooky`): `docs/results/spooky.md`, with the full plan in `spooky-night8.md`;
-- **insults** (`result-insults`): `docs/results/insults-seed0.md` to `insults-round5.md`, with the full plan in `insults-round5.md`;
-- **pizza** (`result-pizza`): `docs/results/pizza-seed0.md` to `pizza-round5.md`, with the full plan in `pizza-round5.md`;
-- **leaf** (`result-leaf`): `docs/results/leaf-medhini/4h/findings.md` for the 8 four-hour runs. The half plan's 13 runs are still at 2 hours, so leaf's 21 runs aren't one comparable set yet.
+The run-by-run write-ups (merged here from `result-spooky`, `result-insults` and `result-pizza`):
+- **spooky:** [`spooky.md`](spooky.md), with the full plan in [`spooky-night8.md`](spooky-night8.md) and the C6 session in [`spooky-c6.md`](spooky-c6.md);
+- **insults:** [`insults-seed0.md`](insults-seed0.md) to [`insults-round5.md`](insults-round5.md), with the full plan in `insults-round5.md` and the C6 session in [`insults-c6.md`](insults-c6.md);
+- **pizza:** [`pizza-seed0.md`](pizza-seed0.md) to [`pizza-round5.md`](pizza-round5.md), with the full plan in `pizza-round5.md`;
+- **leaf** (on `result-leaf`, not merged here): `docs/results/leaf-medhini/full-4h/findings.md` for all 21 runs at 4 hours.
 
 The rest of this page covers the three complete tasks.
 
@@ -101,7 +103,8 @@ The 9 best spooky runs all submitted naive Bayes combined with a linear model, a
 ## C6 sessions
 
 - **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky-c6.md`](spooky-c6.md)).
-- **Insults and pizza:** not yet run. They are planned on the Mac with the dashboard, 2 hours each like every other C6 session, and will be compared with their C1 runs at the 2-hour mark. Their grid ran on Kaggle, so the write-up will note the platform difference.
+- **Insults:** one 2-hour session (seed 100, 8 Nov, on the Mac in Docker), test 0.9087 (gold), within C1's range at the 2-hour mark (0.901 to 0.909, mean 0.9055). 8 interventions; the participant could choose which node the agent worked on but not what it changed ([`insults-c6.md`](insults-c6.md)).
+- **Pizza:** to be run by teammates.
 
 ## Limitations
 

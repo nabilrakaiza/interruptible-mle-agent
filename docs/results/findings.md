@@ -1,6 +1,7 @@
 # Findings of the half plan
 
 > The full plan (21 runs per task at 4 hours) is summarised in [`full-plan.md`](full-plan.md): spooky, insults and pizza are complete.
+> Full analysis of spooky, insults and pizza (Nabil): [Full-plan results](https://claude.ai/artifact/1AHcCcSLLuLfqSGPkTFe5W#aee780ae-bfc4).
 
 All four tasks are complete: 13 grid runs each, and a live session on each.
 
