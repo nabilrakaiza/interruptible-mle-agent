@@ -99,7 +99,7 @@ Footnotes for the report:
 - Kaggle has no Docker, so scripts ran with the subprocess sandbox (no isolation, network access), capped at 2 threads.
 - Seed 0 (round 1) still used StreamLake, which cut off more calls and slowed runs; from seed 1 it was excluded.
 - A1-off gets the validation rows as training data and makes its own split, so its validation scores are not comparable.
-- Source: `runs/_analysis/full_plan/` (copied to [`insults/data/`](insults/data/)) (outcomes, val\_test\_gap, replay, cost) and `insults_runs.csv`.
+- Source: `runs/_analysis/full_plan/` (copied to [`insults/data/`](insults/tables/)) (outcomes, val\_test\_gap, replay, cost) and `insults_runs.csv`.
 
 # Insults report draft
 

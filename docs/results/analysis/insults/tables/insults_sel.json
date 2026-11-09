@@ -1,0 +1,89 @@
+{
+ "val": [
+  {
+   "run": "C4_seed2",
+   "id": "n115",
+   "val": 0.9142116950407106,
+   "probe": 0.9367487684729063,
+   "test": 0.9098282872591983,
+   "h": "e2a1d4f4",
+   "path": "runs/kaggle/C4_detecting-insults-in-social-commentary_seed2/nodes/n115/solution.py"
+  },
+  {
+   "run": "C4_seed2",
+   "id": "n110",
+   "val": 0.9142116950407105,
+   "probe": 0.9355336617405583,
+   "test": 0.9097415151662848,
+   "h": "8cc2d30c",
+   "path": "runs/kaggle/C4_detecting-insults-in-social-commentary_seed2/nodes/n110/solution.py"
+  },
+  {
+   "run": "C5_seed1",
+   "id": "n88",
+   "val": 0.9141870219590427,
+   "probe": 0.9253858784893267,
+   "test": 0.9114865573412144,
+   "h": "dbdeca3e",
+   "path": "runs/kaggle/C5_detecting-insults-in-social-commentary_seed1/nodes/n88/solution.py"
+  }
+ ],
+ "probe": [
+  {
+   "run": "A4-off_seed2",
+   "id": "n103",
+   "val": 0.9095402582449215,
+   "probe": 0.9378325123152709,
+   "test": 0.9103153187083587,
+   "h": "fd5a2341",
+   "path": "runs/kaggle/A4-off_detecting-insults-in-social-commentary_seed2/nodes/n103/solution.py"
+  },
+  {
+   "run": "A4-off_seed2",
+   "id": "n107",
+   "val": 0.9087507196315486,
+   "probe": 0.937799671592775,
+   "test": 0.9101882991340515,
+   "h": "42191410",
+   "path": "runs/kaggle/A4-off_detecting-insults-in-social-commentary_seed2/nodes/n107/solution.py"
+  },
+  {
+   "run": "C5_seed2",
+   "id": "n22",
+   "val": 0.9005510321572497,
+   "probe": 0.9376354679802956,
+   "test": 0.9135166550724382,
+   "h": "8e752b1f",
+   "path": "runs/kaggle/C5_detecting-insults-in-social-commentary_seed2/nodes/n22/solution.py"
+  }
+ ],
+ "test": [
+  {
+   "run": "C5_seed2",
+   "id": "n74",
+   "val": 0.9069495846697919,
+   "probe": 0.9305418719211822,
+   "test": 0.9157380206510196,
+   "h": "6ed97b53",
+   "path": "runs/kaggle/C5_detecting-insults-in-social-commentary_seed2/nodes/n74/solution.py"
+  },
+  {
+   "run": "C5_seed2",
+   "id": "n21",
+   "val": 0.9003947693066864,
+   "probe": 0.9368144499178983,
+   "test": 0.9151568322499746,
+   "h": "3b33b786",
+   "path": "runs/kaggle/C5_detecting-insults-in-social-commentary_seed2/nodes/n21/solution.py"
+  },
+  {
+   "run": "C5_seed2",
+   "id": "n72",
+   "val": 0.9046961098774571,
+   "probe": 0.9286371100164204,
+   "test": 0.914759526837316,
+   "h": "bb2582d9",
+   "path": "runs/kaggle/C5_detecting-insults-in-social-commentary_seed2/nodes/n72/solution.py"
+  }
+ ]
+}
