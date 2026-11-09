@@ -99,7 +99,7 @@ Footnotes for the report:
 - All cut-off calls but one came before StreamLake was excluded on 2 Nov.
 - Seed 0 ran before the 26 Oct sandbox fix (PR #7), which cost A4-off seed 0 two crashed nodes.
 - A1-off gets the validation rows as training data and makes its own split, so its validation scores are not comparable with the other conditions'.
-- Source: `runs/_analysis/full_plan/` (copied to [`spooky/data/`](spooky/data/)) (outcomes, val\_test\_gap, replay, cost) and `spooky_runs.csv`.
+- Source: `runs/_analysis/full_plan/` (copied to [`spooky/data/`](spooky/tables/)) (outcomes, val\_test\_gap, replay, cost) and `spooky_runs.csv`.
 
 # Spooky report draft
 
