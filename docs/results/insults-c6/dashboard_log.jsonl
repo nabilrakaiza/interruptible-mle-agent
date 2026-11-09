@@ -1,0 +1,32 @@
+{"ts": "2026-11-08T06:12:44.648362+00:00", "session": "9ac48706", "event": "session_start"}
+{"ts": "2026-11-08T06:12:44.748681+00:00", "session": "9ac48706", "event": "view_node", "node": "n0", "step": 2}
+{"ts": "2026-11-08T06:21:39.651992+00:00", "session": "9ac48706", "event": "view_node", "node": "n6", "step": 7}
+{"ts": "2026-11-08T06:47:32.006311+00:00", "session": "9ac48706", "event": "view_node", "node": "n3", "step": 20}
+{"ts": "2026-11-08T06:47:42.900997+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-43ff8b13", "action": "prune", "target": "n3"}
+{"ts": "2026-11-08T06:59:02.833499+00:00", "session": "9ac48706", "event": "view_node", "node": "n2", "step": 26}
+{"ts": "2026-11-08T06:59:46.115530+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-632bac05", "action": "redirect", "target": "n2"}
+{"ts": "2026-11-08T07:01:17.842942+00:00", "session": "9ac48706", "event": "view_node", "node": "n26", "step": 29}
+{"ts": "2026-11-08T07:12:19.960902+00:00", "session": "9ac48706", "event": "view_node", "node": "n32", "step": 35}
+{"ts": "2026-11-08T07:12:32.499648+00:00", "session": "9ac48706", "event": "view_node", "node": "n30", "step": 35}
+{"ts": "2026-11-08T07:21:53.345467+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-0f8e74f2", "action": "inject", "target": null}
+{"ts": "2026-11-08T07:21:57.400641+00:00", "session": "9ac48706", "event": "view_node", "node": "n37", "step": 41}
+{"ts": "2026-11-08T07:22:07.199237+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-2fe66cdd", "action": "redirect", "target": "n37"}
+{"ts": "2026-11-08T07:23:36.948327+00:00", "session": "9ac48706", "event": "view_node", "node": "n39", "step": 43}
+{"ts": "2026-11-08T07:25:30.935513+00:00", "session": "9ac48706", "event": "view_node", "node": "n40", "step": 44}
+{"ts": "2026-11-08T07:27:06.526454+00:00", "session": "9ac48706", "event": "view_node", "node": "n41", "step": 45}
+{"ts": "2026-11-08T07:28:41.264513+00:00", "session": "9ac48706", "event": "view_node", "node": "n42", "step": 46}
+{"ts": "2026-11-08T07:30:27.014569+00:00", "session": "9ac48706", "event": "view_node", "node": "n43", "step": 47}
+{"ts": "2026-11-08T07:31:46.294881+00:00", "session": "9ac48706", "event": "view_node", "node": "n44", "step": 48}
+{"ts": "2026-11-08T07:32:29.482136+00:00", "session": "9ac48706", "event": "view_node", "node": "n45", "step": 49}
+{"ts": "2026-11-08T07:32:49.102826+00:00", "session": "9ac48706", "event": "view_node", "node": "n46", "step": 50}
+{"ts": "2026-11-08T07:35:18.434668+00:00", "session": "9ac48706", "event": "view_node", "node": "n0", "step": 50}
+{"ts": "2026-11-08T07:35:27.793915+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-fcb34499", "action": "prune", "target": "n0"}
+{"ts": "2026-11-08T07:35:31.325566+00:00", "session": "9ac48706", "event": "view_node", "node": "n1", "step": 50}
+{"ts": "2026-11-08T07:35:42.846665+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-ad47e87c", "action": "prune", "target": "n1"}
+{"ts": "2026-11-08T07:35:50.321462+00:00", "session": "9ac48706", "event": "view_node", "node": "n2", "step": 50}
+{"ts": "2026-11-08T07:35:54.897688+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-db1f1030", "action": "prune", "target": "n2"}
+{"ts": "2026-11-08T07:36:56.710430+00:00", "session": "9ac48706", "event": "view_node", "node": "n47", "step": 52}
+{"ts": "2026-11-08T07:58:14.291348+00:00", "session": "9ac48706", "event": "view_node", "node": "n56", "step": 61}
+{"ts": "2026-11-08T07:59:19.378932+00:00", "session": "9ac48706", "event": "view_node", "node": "n57", "step": 62}
+{"ts": "2026-11-08T08:01:27.185711+00:00", "session": "9ac48706", "event": "view_node", "node": "n37", "step": 62}
+{"ts": "2026-11-08T08:01:50.193112+00:00", "session": "9ac48706", "event": "queue", "intervention": "q-9f111ef5", "action": "override", "target": "n37"}
