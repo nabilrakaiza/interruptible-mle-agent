@@ -99,7 +99,7 @@ Footnotes for the report:
 - Seed 0 (round 1) still used StreamLake: C1 lost 112 of its 240 minutes and C4 101 to cut-off calls, and C1 and A4-off each restarted once and resumed from a checkpoint.
 - A1-off gets the validation rows as training data and makes its own split, so its validation scores are not comparable.
 - The `requester_received_pizza` label leaks through `giver_username_if_known` (see the report draft); no pick used it.
-- Source: `runs/_analysis/full_plan/` (copied to [`pizza/data/`](pizza/data/)) (outcomes, val\_test\_gap, replay, cost) and `pizza_runs.csv`.
+- Source: `runs/_analysis/full_plan/` (copied to [`pizza/data/`](pizza/tables/)) (outcomes, val\_test\_gap, replay, cost) and `pizza_runs.csv`.
 
 # Pizza report draft
 
