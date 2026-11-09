@@ -1,0 +1,94 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,A1-off,0.9037,True,True,True
+A1-off_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,A1-off,0.9021,True,True,True
+A1-off_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,A1-off,0.91271,True,True,True
+A1-off_random-acts-of-pizza_seed0,random-acts-of-pizza,0,A1-off,0.67002,True,True,False
+A1-off_random-acts-of-pizza_seed1,random-acts-of-pizza,1,A1-off,0.69535,True,True,True
+A1-off_random-acts-of-pizza_seed2,random-acts-of-pizza,2,A1-off,0.68986,True,True,False
+A1-off_spooky-author-identification_seed0,spooky-author-identification,0,A1-off,0.34403,True,True,False
+A1-off_spooky-author-identification_seed1,spooky-author-identification,1,A1-off,0.40777,True,True,False
+A1-off_spooky-author-identification_seed2,spooky-author-identification,2,A1-off,0.32566,True,True,False
+A4-off_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,A4-off,0.90831,True,True,True
+A4-off_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,A4-off,0.91265,True,True,True
+A4-off_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,A4-off,0.9111,True,True,True
+A4-off_random-acts-of-pizza_seed0,random-acts-of-pizza,0,A4-off,0.6553,True,True,False
+A4-off_random-acts-of-pizza_seed1,random-acts-of-pizza,1,A4-off,0.70781,True,True,True
+A4-off_random-acts-of-pizza_seed2,random-acts-of-pizza,2,A4-off,0.68219,True,True,False
+A4-off_spooky-author-identification_seed0,spooky-author-identification,0,A4-off,0.32153,True,True,False
+A4-off_spooky-author-identification_seed1,spooky-author-identification,1,A4-off,0.35845,True,True,False
+A4-off_spooky-author-identification_seed2,spooky-author-identification,2,A4-off,0.34716,True,True,False
+C1_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,C1,0.90211,True,True,True
+C1_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,C2 (post hoc),0.90695,True,True,True
+C1_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,"C3 (post hoc, k=3)",0.90211,True,True,True
+C1_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,C1,0.90578,True,True,True
+C1_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,C2 (post hoc),0.90762,True,True,True
+C1_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,"C3 (post hoc, k=3)",0.90578,True,True,True
+C1_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,C1,0.90587,True,True,True
+C1_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,C2 (post hoc),0.90843,True,True,True
+C1_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,"C3 (post hoc, k=3)",0.90587,True,True,True
+C1_detecting-insults-in-social-commentary_seed3,detecting-insults-in-social-commentary,3,C1,0.89278,True,True,True
+C1_detecting-insults-in-social-commentary_seed3,detecting-insults-in-social-commentary,3,C2 (post hoc),0.90941,True,True,True
+C1_detecting-insults-in-social-commentary_seed3,detecting-insults-in-social-commentary,3,"C3 (post hoc, k=3)",0.89278,True,True,True
+C1_detecting-insults-in-social-commentary_seed4,detecting-insults-in-social-commentary,4,C1,0.90296,True,True,True
+C1_detecting-insults-in-social-commentary_seed4,detecting-insults-in-social-commentary,4,C2 (post hoc),0.90673,True,True,True
+C1_detecting-insults-in-social-commentary_seed4,detecting-insults-in-social-commentary,4,"C3 (post hoc, k=3)",0.90296,True,True,True
+C1_random-acts-of-pizza_seed0,random-acts-of-pizza,0,C1,0.68423,True,True,False
+C1_random-acts-of-pizza_seed0,random-acts-of-pizza,0,C2 (post hoc),0.69275,True,True,True
+C1_random-acts-of-pizza_seed0,random-acts-of-pizza,0,"C3 (post hoc, k=3)",0.68423,True,True,False
+C1_random-acts-of-pizza_seed1,random-acts-of-pizza,1,C1,0.6932,True,True,True
+C1_random-acts-of-pizza_seed1,random-acts-of-pizza,1,C2 (post hoc),0.70993,True,True,True
+C1_random-acts-of-pizza_seed1,random-acts-of-pizza,1,"C3 (post hoc, k=3)",0.6959,True,True,True
+C1_random-acts-of-pizza_seed2,random-acts-of-pizza,2,C1,0.70946,True,True,True
+C1_random-acts-of-pizza_seed2,random-acts-of-pizza,2,C2 (post hoc),0.70946,True,True,True
+C1_random-acts-of-pizza_seed2,random-acts-of-pizza,2,"C3 (post hoc, k=3)",0.70946,True,True,True
+C1_random-acts-of-pizza_seed3,random-acts-of-pizza,3,C1,0.7013,True,True,True
+C1_random-acts-of-pizza_seed3,random-acts-of-pizza,3,C2 (post hoc),0.70343,True,True,True
+C1_random-acts-of-pizza_seed3,random-acts-of-pizza,3,"C3 (post hoc, k=3)",0.7013,True,True,True
+C1_random-acts-of-pizza_seed4,random-acts-of-pizza,4,C1,0.70068,True,True,True
+C1_random-acts-of-pizza_seed4,random-acts-of-pizza,4,C2 (post hoc),0.70274,True,True,True
+C1_random-acts-of-pizza_seed4,random-acts-of-pizza,4,"C3 (post hoc, k=3)",0.70068,True,True,True
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C1,0.3198,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,C2 (post hoc),0.31865,True,True,False
+C1_spooky-author-identification_seed0,spooky-author-identification,0,"C3 (post hoc, k=3)",0.31865,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,C1,0.30286,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,C2 (post hoc),0.30098,True,True,False
+C1_spooky-author-identification_seed1,spooky-author-identification,1,"C3 (post hoc, k=3)",0.30286,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,C1,0.29439,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,C2 (post hoc),0.29439,True,True,False
+C1_spooky-author-identification_seed2,spooky-author-identification,2,"C3 (post hoc, k=3)",0.29439,True,True,False
+C1_spooky-author-identification_seed3,spooky-author-identification,3,C1,0.36718,True,True,False
+C1_spooky-author-identification_seed3,spooky-author-identification,3,C2 (post hoc),0.36718,True,True,False
+C1_spooky-author-identification_seed3,spooky-author-identification,3,"C3 (post hoc, k=3)",0.36718,True,True,False
+C1_spooky-author-identification_seed4,spooky-author-identification,4,C1,0.3608,True,True,False
+C1_spooky-author-identification_seed4,spooky-author-identification,4,C2 (post hoc),0.3608,True,True,False
+C1_spooky-author-identification_seed4,spooky-author-identification,4,"C3 (post hoc, k=3)",0.3608,True,True,False
+C4_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,C4,0.90408,True,True,True
+C4_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,C4,0.90427,True,True,True
+C4_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,C4,0.90983,True,True,True
+C4_detecting-insults-in-social-commentary_seed3,detecting-insults-in-social-commentary,3,C4,0.90833,True,True,True
+C4_detecting-insults-in-social-commentary_seed4,detecting-insults-in-social-commentary,4,C4,0.90069,True,True,True
+C4_random-acts-of-pizza_seed0,random-acts-of-pizza,0,C4,0.66918,True,True,False
+C4_random-acts-of-pizza_seed1,random-acts-of-pizza,1,C4,0.706,True,True,True
+C4_random-acts-of-pizza_seed2,random-acts-of-pizza,2,C4,0.67705,True,True,False
+C4_random-acts-of-pizza_seed3,random-acts-of-pizza,3,C4,0.70601,True,True,True
+C4_random-acts-of-pizza_seed4,random-acts-of-pizza,4,C4,0.66711,True,True,False
+C4_spooky-author-identification_seed0,spooky-author-identification,0,C4,0.38082,True,True,False
+C4_spooky-author-identification_seed1,spooky-author-identification,1,C4,0.31314,True,True,False
+C4_spooky-author-identification_seed2,spooky-author-identification,2,C4,0.33355,True,True,False
+C4_spooky-author-identification_seed3,spooky-author-identification,3,C4,0.32142,True,True,False
+C4_spooky-author-identification_seed4,spooky-author-identification,4,C4,0.32356,True,True,False
+C5_detecting-insults-in-social-commentary_seed0,detecting-insults-in-social-commentary,0,C5,0.90045,True,True,True
+C5_detecting-insults-in-social-commentary_seed1,detecting-insults-in-social-commentary,1,C5,0.91149,True,True,True
+C5_detecting-insults-in-social-commentary_seed2,detecting-insults-in-social-commentary,2,C5,0.91574,True,True,True
+C5_detecting-insults-in-social-commentary_seed3,detecting-insults-in-social-commentary,3,C5,0.90202,True,True,True
+C5_detecting-insults-in-social-commentary_seed4,detecting-insults-in-social-commentary,4,C5,0.90739,True,True,True
+C5_random-acts-of-pizza_seed0,random-acts-of-pizza,0,C5,0.70077,True,True,True
+C5_random-acts-of-pizza_seed1,random-acts-of-pizza,1,C5,0.67526,True,True,False
+C5_random-acts-of-pizza_seed2,random-acts-of-pizza,2,C5,0.68287,True,True,False
+C5_random-acts-of-pizza_seed3,random-acts-of-pizza,3,C5,0.6907,True,True,False
+C5_random-acts-of-pizza_seed4,random-acts-of-pizza,4,C5,0.67399,True,True,False
+C5_spooky-author-identification_seed0,spooky-author-identification,0,C5,0.33597,True,True,False
+C5_spooky-author-identification_seed1,spooky-author-identification,1,C5,0.28161,True,True,True
+C5_spooky-author-identification_seed2,spooky-author-identification,2,C5,0.33523,True,True,False
+C5_spooky-author-identification_seed3,spooky-author-identification,3,C5,0.30014,True,True,False
+C5_spooky-author-identification_seed4,spooky-author-identification,4,C5,0.31362,True,True,False

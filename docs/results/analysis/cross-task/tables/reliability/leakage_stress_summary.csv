@@ -1,0 +1,7 @@
+measure,leak_type,n,rate,expected_rule_rate
+detection_rate,harness_access,1,1.0,1.0
+detection_rate,target_feature,1,1.0,1.0
+detection_rate,test_stats,1,1.0,1.0
+detection_rate,val_in_train,1,1.0,1.0
+detection_rate,all,4,1.0,1.0
+false_positive_rate,all,4,0.0,

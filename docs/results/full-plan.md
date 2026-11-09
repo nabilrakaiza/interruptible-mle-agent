@@ -2,7 +2,7 @@
 
 Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1, C4 and C5 seeds 0 to 4, and A1-off and A4-off seeds 0 to 2. The half plan's findings are in [`findings.md`](findings.md).
 
-**Full analysis of spooky, insults and pizza (Nabil):** [Full-plan results](https://claude.ai/artifact/1AHcCcSLLuLfqSGPkTFe5W#aee780ae-bfc4), with a cross-task summary, a tab per task (every run, charts, final models and a report draft), the reliability checks, tree shape and further analyses.
+**Full analysis of spooky, insults and pizza (Nabil):** [Full-plan results](https://claude.ai/artifact/1AHcCcSLLuLfqSGPkTFe5W#aee780ae-bfc4), with a cross-task summary, a tab per task (every run, charts, final models and a report draft), the reliability checks, tree shape and further analyses. A snapshot of it, with the charts, tables and scripts, is in [`analysis/`](analysis/README.md).
 
 | Task | Modality | Grid runs | Where they ran | C6 |
 |---|---|---|---|---|
