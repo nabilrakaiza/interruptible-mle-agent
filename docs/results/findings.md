@@ -13,10 +13,10 @@ All four tasks are complete: 13 grid runs each, and a live session on each.
 | **leaf** | image + tabular | Medhini | 13 of 13 | 1 session |
 
 Each task has its own write-up:
-- [`spooky.md`](spooky.md), with [`spooky-c6.md`](spooky-c6.md) and [`spooky-drops.md`](spooky-drops.md)
-- [`cactus.md`](cactus.md), with [`cactus-c6.md`](cactus-c6.md)
-- [`nomad.md`](nomad.md), a summary of Sahi's package in [`nomad/`](nomad/README.md)
-- [`leaf.md`](leaf.md), a summary of Medhini's package in [`leaf/`](leaf/findings.md); the full plan (21 runs at 4 hours) is in [`leaf/full-4h/`](leaf/full-4h/findings.md)
+- [`spooky/spooky.md`](spooky/spooky.md), with [`spooky/c6.md`](spooky/c6.md) and [`spooky/drops.md`](spooky/drops.md)
+- [`cactus/cactus.md`](cactus/cactus.md), with [`cactus/c6.md`](cactus/c6.md)
+- [`nomad/nomad.md`](nomad/nomad.md), a summary of Sahi's package in [`nomad/`](nomad/README.md)
+- [`leaf/leaf.md`](leaf/leaf.md), a summary of Medhini's package in [`leaf/`](leaf/findings.md); the full plan (21 runs at 4 hours) is in [`leaf/full-4h/`](leaf/full-4h/findings.md)
 
 ## Setup
 
@@ -121,7 +121,7 @@ How much the oracle pick (C2) would have gained over C1's own pick:
 
 - **Spooky:**
   - every run below 0.34 submitted naive Bayes combined with a linear model;
-  - adding one ComplementNB to the C6 run improves its test score from 0.368 to 0.336 ([`spooky-drops.md`](spooky-drops.md));
+  - adding one ComplementNB to the C6 run improves its test score from 0.368 to 0.336 ([`spooky/drops.md`](spooky/drops.md));
   - the agent's own finding "prefer TF-IDF over NB" had steered that run away.
 - **Cactus:** CNNs trained from scratch on CPU reach 0.999 within 26 nodes, the task's ceiling.
 - **Nomad:** silver-level scores in almost every run.

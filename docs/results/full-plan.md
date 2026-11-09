@@ -14,9 +14,9 @@ Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1
 | nomad | tabular | 13 (half plan) | Sahi's machine | 1 session |
 
 The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
-- **spooky:** [`spooky.md`](spooky.md), with the full plan in [`spooky-night8.md`](spooky-night8.md) and the C6 session in [`spooky-c6.md`](spooky-c6.md);
-- **insults:** [`insults-seed0.md`](insults-seed0.md) to [`insults-round5.md`](insults-round5.md), with the full plan in `insults-round5.md` and the C6 session in [`insults-c6.md`](insults-c6.md);
-- **pizza:** [`pizza-seed0.md`](pizza-seed0.md) to [`pizza-round5.md`](pizza-round5.md), with the full plan in `pizza-round5.md`;
+- **spooky:** [`spooky/spooky.md`](spooky/spooky.md), with the full plan in [`spooky/sessions/night8.md`](spooky/sessions/night8.md) and the C6 session in [`spooky/c6.md`](spooky/c6.md);
+- **insults:** [`insults/sessions/seed0.md`](insults/sessions/seed0.md) to [`insults/sessions/round5.md`](insults/sessions/round5.md), with the full plan in `insults/sessions/round5.md` and the C6 session in [`insults/c6.md`](insults/c6.md);
+- **pizza:** [`pizza/sessions/seed0.md`](pizza/sessions/seed0.md) to [`pizza/sessions/round5.md`](pizza/sessions/round5.md), with the full plan in `pizza/sessions/round5.md`;
 - **leaf** (merged from `result-leaf`): Medhini's full-plan package in [`leaf/full-4h/`](leaf/full-4h/findings.md), all 21 runs at 4 hours; the earlier 8-run four-hour set is in [`leaf/4h/`](leaf/4h/findings.md).
 
 The rest of this page covers the three complete tasks.
@@ -93,7 +93,7 @@ Pizza's C1 (4 bronzes in 5, against 5 in 16 for the other conditions together) i
 
 ### 5. On spooky, the model family matters more than the condition
 
-The 9 best spooky runs all submitted naive Bayes combined with a linear model, and the three weakest runs with A1 didn't use that combination. The half plan's stricter rule ("every run below 0.34 combined them", [`spooky-drops.md`](spooky-drops.md)) doesn't hold at 4 hours: 4 of the 14 runs under 0.34 didn't. Which family the agent lands on early still separates spooky's runs more than any condition does.
+The 9 best spooky runs all submitted naive Bayes combined with a linear model, and the three weakest runs with A1 didn't use that combination. The half plan's stricter rule ("every run below 0.34 combined them", [`spooky/drops.md`](spooky/drops.md)) doesn't hold at 4 hours: 4 of the 14 runs under 0.34 didn't. Which family the agent lands on early still separates spooky's runs more than any condition does.
 
 ### 6. Speed and cut-off calls changed between seeds
 
@@ -102,8 +102,8 @@ The 9 best spooky runs all submitted naive Bayes combined with a linear model, a
 
 ## C6 sessions
 
-- **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky-c6.md`](spooky-c6.md)).
-- **Insults:** one 2-hour session (seed 100, 8 Nov, on the Mac in Docker), test 0.9087 (gold), within C1's range at the 2-hour mark (0.901 to 0.909, mean 0.9055). 8 interventions; the participant could choose which node the agent worked on but not what it changed ([`insults-c6.md`](insults-c6.md)).
+- **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky/c6.md`](spooky/c6.md)).
+- **Insults:** one 2-hour session (seed 100, 8 Nov, on the Mac in Docker), test 0.9087 (gold), within C1's range at the 2-hour mark (0.901 to 0.909, mean 0.9055). 8 interventions; the participant could choose which node the agent worked on but not what it changed ([`insults/c6.md`](insults/c6.md)).
 - **Pizza:** to be run by teammates.
 
 ## Limitations
