@@ -1,0 +1,2 @@
+run,nodes,interventions,first_at_node,nodes_pruned,c1_pick,c1_test,policy_pick,policy_test,higher_is_better
+C6_aerial-cactus-identification_seed102,28,0,,0,n22,0.9999531487001693,n22,0.9999531487001693,True

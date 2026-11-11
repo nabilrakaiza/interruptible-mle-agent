@@ -2,6 +2,8 @@
 
 28 Oct 2026, 19:14 to 21:15, Dziand's Mac. One C6 session on `aerial-cactus-identification`, seed 101, following `docs/c6-protocol.md`. An earlier C6 run on seed 100 (14:23 to 16:23) was not watched and is reported separately below. The participant's full notes, with the debrief, are in [`cactus-c6/c6_notes.md`](cactus-c6/c6_notes.md).
 
+A 4 hour C6 run on seed 102, with Claude as the monitor instead of a person, is in [`cactus-c6-4h.md`](cactus-c6-4h.md).
+
 Cactus is ROC AUC, so **higher is better**. MLE-bench thresholds: median 0.9991, and bronze, silver and gold are all 1.0.
 
 ## Setup
