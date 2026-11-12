@@ -6,13 +6,30 @@ MLE agents run for hours, steering on a validation score they compute themselves
 
 DSA4213 (Natural Language Processing for Data Science), NUS, Semester 1 AY2026/2027.
 
-> **Status:** all agents and policies are built and tested end to end; the experiment grid (the half plan in [`docs/experiments.md`](docs/experiments.md)) is next.
+> **Status:** complete. 118 four-hour runs on six MLE-bench Lite tasks, plus five live human sessions. The final report is [`docs/report/final_report.pdf`](docs/report/final_report.pdf); every result is under [`docs/results/`](docs/results/full-plan.md).
 
 ## Research question
 
 **Which human interventions into a tree-search MLE agent improve its outcomes, and at what interaction cost?**
 
 We compare interventions that change the agent's next *action* (prune, redirect, override) against interventions that change its *beliefs* (inject knowledge, correct a stored finding). See [`docs/proposal/proposal.pdf`](docs/proposal/proposal.pdf) for the full proposal.
+
+## Results
+
+The short answer: **none of the interventions we tested improved the agent, and the reason is instructive.** From the [final report](docs/report/final_report.pdf):
+
+- **The agent is reliable.** All 63 runs on the three text tasks made a valid submission above the leaderboard median (insults gold on 21 of 21), for about $21 in total.
+- **No condition beat the autonomous baseline** (C1). A Friedman test across the text tasks finds no difference between C1, C4 and C5 (p = 0.55), and no task separates them.
+- **Separating evaluation from optimisation is what mattered.** With A1's frozen harness, the validation-test drift the interventions were built to catch barely occurred. Without it, validation was more optimistic and one spooky run leaked (validation 0.152, test 0.408).
+- **The size of the held-out splits explains most of the differences between tasks.** Where they are large, validation and probe agree and the monitors have nothing to do; where they are small, both are noisy and the monitors act on noise.
+- **People helped most through task knowledge and a direct instruction channel**, not by watching scores: in the live sessions, redirects and injected ideas did not change what the agent did.
+
+| Where | What |
+|---|---|
+| [`docs/report/`](docs/report/final_report.pdf) | The final report (LaTeX source and PDF) |
+| [`docs/results/full-plan.md`](docs/results/full-plan.md) | Results of the full plan, task by task, with links to every write-up |
+| [`docs/results/analysis/`](docs/results/analysis/README.md) | Cross-task analysis of the 63 text-task runs, with tables, charts and scripts |
+| `docs/results/<task>/` | One folder per task: runs, grades, live sessions (C6) and analysis |
 
 ## How it works
 
@@ -54,6 +71,8 @@ Details: [`docs/architecture.md`](docs/architecture.md) and [`docs/intervention-
 configs/              base settings and one file per experimental condition
 dashboard/            Streamlit monitor (reads checkpoint, writes queue)
 docs/                 architecture, protocol, experiment plan, proposal
+  results/            every result, one folder per task, plus the cross-task analysis
+  report/             the final report (LaTeX source and PDF)
 scripts/              data preparation, run launchers, grading and analysis
 src/imle/
   agents/             A1 evaluation, A2 retrieval, A3 coding, A4 reflection
@@ -139,7 +158,7 @@ python scripts/cloud_run.py --config configs/conditions/c1_autonomous.yaml \
 - On Colab and Kaggle, use `--sandbox subprocess` and the notebooks in `notebooks/` (`docs/cloud-runs.md`).
 - `cloud_run.py` wraps `python -m imle.controller` and retries after crashes; the controller can also be called directly.
 
-**4. The experiment grid.** `configs/schedule.yaml` holds the half plan for the slides (`docs/experiments.md`): four tasks, 13 runs of 2 hours each, and each person runs one task on their own machine. Running the same command again resumes it:
+**4. The experiment grid.** `configs/schedule.yaml` holds the half plan used for the slides (`docs/experiments.md`): 13 runs per task at 2 hours, each person running one task on their own machine. The full plan is 21 runs per task at 4 hours (C1, C4 and C5 on seeds 0 to 4; A1-off and A4-off on seeds 0 to 2); `configs/schedule_nomad_full.yaml` is an example for one task, and `configs/kaggle_sessions.yaml` with `notebooks/kaggle_run.ipynb` ran insults and pizza on Kaggle (`docs/cloud-runs.md`). Running the same command again resumes a grid:
 
 ```bash
 python scripts/launch_grid.py --status                         # the whole grid: done, unfinished, to do
@@ -194,30 +213,33 @@ python scripts/leakage_stress_test.py --execute                 # A1's leakage s
 | C3 | Top-k submission (k=3) | post hoc from C1 |
 | C4 | Scripted: divergence pruning (action) | yes |
 | C5 | Scripted: finding correction (belief) | yes |
-| C6 | Live human sessions | a few |
-| A1-off / A4-off / A2-off | Ablations | yes |
+| C6 | Live human sessions | one 2-hour session per task (five; none on pizza) |
+| A1-off / A4-off | Ablations: no evaluation agent / no reflection | yes |
+| A2-off | Ablation: no retrieval | not run (optional in the proposal) |
 
-Tasks: six MLE-bench Lite competitions, all CPU-feasible. See [`docs/experiments.md`](docs/experiments.md).
+Tasks: six MLE-bench Lite competitions, all CPU-feasible: `spooky-author-identification`, `detecting-insults-in-social-commentary` and `random-acts-of-pizza` (text), `nomad2018-predict-transparent-conductors` (tabular), `leaf-classification` and `aerial-cactus-identification` (image). Cactus ran 13 runs (the half plan's seeds) at 4 hours; the other five ran the full 21. See [`docs/experiments.md`](docs/experiments.md).
 
 ## Data and secrets
 
 - **Never commit competition data.** It's covered by Kaggle's terms. Commit the preparation script only.
 - **Never commit keys.** They live in `.env`, which is gitignored.
-- Large run artefacts (`runs/`) are gitignored. Share them via cloud storage.
+- Run folders (`runs/`) are gitignored: they are large and contain copies of the competition data. Each member keeps the runs they made, and they are available on request. Grades, outcomes, intervention logs and analysis tables for every run are in `docs/results/`.
 
 ## Team
 
-| Member | Role |
-|---|---|
-| TBD | Infrastructure and experiments |
-| TBD | Core agent (A3, A5) |
-| TBD | Evaluation and memory (A1, A4) |
-| TBD | Interaction layer (checkpoint, queue, dashboard) |
+| Member | Role | Tasks run |
+|---|---|---|
+| Nabil Rakaiza Abror | Core agent (A3, A5), A2 retrieval, integration, cross-task analysis | spooky, insults, pizza |
+| Dziand Dafi Ginandjar | Evaluation and memory (A1, A4, C5) | cactus |
+| Medhini Karthikeyan | Infrastructure (sandbox, logging) | leaf |
+| Sahishnav Kritin Karamarathur Senthil Kumar | Interaction layer (C4, dashboard) | nomad |
+
+Each member's contributions in detail: [`docs/contributions.md`](docs/contributions.md) and the contribution statement in the report.
 
 ## Built on
 
 - [MLE-bench](https://github.com/openai/mle-bench): tasks, grading, medal thresholds
-- [AIDE](https://github.com/WecoAI/aideml): starting point for the tree search and operators
+- [AIDE](https://github.com/WecoAI/aideml): design of the tree search and the draft, debug and improve operators (our own implementation)
 - [Streamlit](https://streamlit.io): monitoring dashboard
 
-Key references: MLE-bench (arXiv:2410.07095), AIDE (arXiv:2502.13138), AIRA-dojo (arXiv:2507.02554), MLE-STAR (arXiv:2506.15692), ML-Master 2.0 (arXiv:2601.10402). Full list in the proposal.
+Key references: MLE-bench (arXiv:2410.07095), AIDE (arXiv:2502.13138), AIRA-dojo (arXiv:2507.02554), MLE-STAR (arXiv:2506.15692), ML-Master 2.0 (arXiv:2601.10402). Full list in the proposal and the final report.

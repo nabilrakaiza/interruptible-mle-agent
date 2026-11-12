@@ -15,4 +15,4 @@ Nabil's analysis of the 63 full-plan runs (21 per task), exported on 9 Nov 2026 
 - `cross-task/tables/`: outcomes, cost, validation–test gap, probe fidelity, error taxonomy, C4 replay, finding accuracy, tree shape, the further analyses, the reliability checks and the MLE-bench comparison, with `SUMMARY.md` (the first pass over all of them).
 - `cross-task/scripts/`: the scripts written for this analysis. They read the run folders on Nabil's Mac (`runs/grid/`, `runs/kaggle/`, `runs/_analysis/`), which are not in git; the project's own scripts (`scripts/outcomes.py`, `scripts/replay_policy.py` and the others) made the remaining tables.
 
-Pizza C6 (run by teammates) and the leaf, cactus and nomad tasks are not part of this analysis.
+The leaf, cactus and nomad tasks and the two runs with an LLM as the monitor are not part of this analysis; they are summarised in [`../full-plan.md`](../full-plan.md) and in their task folders.
