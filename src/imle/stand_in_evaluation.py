@@ -32,6 +32,7 @@ so `mlebench grade-sample` can re-grade it.
 
 from __future__ import annotations
 
+import csv
 import json
 import os
 import shutil
@@ -292,13 +293,15 @@ def prepare(task: str, run_dir: Path, seed: int) -> SimpleNamespace:
 
     features = [c for c in train.columns if c not in label_cols and c != "split"]
     # Internally the target is `label`; the agent sees it under its original name, as the description says.
+    # Pizza posts can hold a bare "\r", which pandas leaves unquoted and read_csv then splits into two rows.
+    quoting = csv.QUOTE_NONNUMERIC if task == "random-acts-of-pizza" else csv.QUOTE_MINIMAL
     train_out = train[train.split == "train"][features + label_cols]
     train_out.rename(columns={"label": spec.label_name} if spec.label_name else {}).to_csv(
-        inputs / "train.csv", index=False)
+        inputs / "train.csv", index=False, quoting=quoting)
     holdout = train[train.split != "train"]
     test = test.copy().assign(split="test", position=range(len(test)))  # copy: de-fragment after inserts
     predict = pd.concat([holdout[features], test[features]], ignore_index=True)
-    predict.sample(frac=1, random_state=split_seed).to_csv(inputs / "predict.csv", index=False)
+    predict.sample(frac=1, random_state=split_seed).to_csv(inputs / "predict.csv", index=False, quoting=quoting)
 
     test_labels = pd.concat([test[["id", "split", "position", "orig_id"]].reset_index(drop=True), truth], axis=1)
     holdout_labels = holdout[["id", "split", *label_cols]].assign(position=-1, orig_id="")
