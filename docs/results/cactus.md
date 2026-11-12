@@ -6,6 +6,7 @@ The half plan's 13 runs on `aerial-cactus-identification`: seeds 0, 1 and 2 of C
 - [`cactus-seed1.md`](cactus-seed1.md): all five conditions, seed 1
 - [`cactus-seed2.md`](cactus-seed2.md): C1, C4 and C5, seed 2
 - [`cactus-c6.md`](cactus-c6.md): the C6 live session, seed 101, and the unwatched C6 run on seed 100
+- [`cactus-4h.md`](cactus-4h.md): the same 13 runs again with a 4 hour budget (5 to 9 Nov 2026)
 
 Cactus is ROC AUC, so **higher is better**. MLE-bench thresholds: median 0.9991, and bronze, silver and gold are all 1.0.
 

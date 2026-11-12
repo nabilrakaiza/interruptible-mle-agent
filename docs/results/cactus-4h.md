@@ -1,0 +1,107 @@
+# Cactus at 4 hours: all results
+
+The half plan's 13 runs on `aerial-cactus-identification` again, with a **4 hour** budget each instead of 2: seeds 0, 1 and 2 of C1, C4 and C5, and seeds 0 and 1 of A1-off and A4-off. They ran from 5 to 9 Nov 2026 on Dziand's Mac, in `runs/grid4h`. The 2 hour results are in [`cactus.md`](cactus.md). The 4 hour C6 session (seed 102, with Claude as the monitor) is in [`cactus-c6-4h.md`](cactus-c6-4h.md).
+
+Cactus is ROC AUC, so **higher is better**. MLE-bench thresholds: median 0.9991, and bronze, silver and gold are all 1.0.
+
+## Setup
+
+- **The same as the 2 hour grid apart from the budget:** DeepSeek V4 Flash 0731 (fp8), Docker sandbox, 2 CPUs per run, A1 on unless the condition turns it off, `--retries 0`. Code at `result-cactus` (`main` at 92cff79 plus results only). Launched with `~/imle-cactus-scripts/grid_cactus.sh` (`HOURS=4 ROOT=runs/grid4h`).
+- **Machine:** the same 13-inch MacBook Pro (Apple M2, 8 cores, 8 GB of memory, macOS 14.1.1; `machine.jsonl`: arm64, 8 CPUs, 8.6 GB), kept awake with `caffeinate`. Docker ran in Colima with a 2-CPU, 5 GB VM. **Training was on CPU only:** Docker on macOS can't reach the M2's GPU.
+- **Schedule:** one run at a time. Seed 0 (C1, C4, C5) 5 to 6 Nov; C1 seed 1 6 Nov; C4 seed 1 7 Nov; C5 seed 1 plus seed 2 7 to 8 Nov; A1-off seeds 0 and 1 and A4-off seed 0 8 to 9 Nov; A4-off seed 1 9 Nov.
+- **Health:** every run in this table finished its budget on its first try and made a valid submission. Two launches were discarded before that and are not in the table:
+  - The first C5 seed 1 died at step ~32 when the laptop's battery ran out (Low Power Sleep at 1%; `caffeinate` can't stop that). The controller can't resume, so it was rerun from scratch, plugged in.
+  - A C4 seed 1 launch on 7 Nov 09:17 was started by Claude without the participant's go. It was stopped within about a minute and rerun at 10:50.
+  - Both partial runs are in `runs/aborted/`.
+- **Cost:** $1.63 for the 13 runs, against $1.12 at 2 hours.
+
+## Test scores
+
+| Condition | Seed 0 | Seed 1 | Seed 2 | Mean (4 h) | Mean (2 h) |
+|---|---|---|---|---|---|
+| C1 | 0.99953 | 0.99970 | 0.99987 | 0.99970 | 0.99963 |
+| C2 (oracle, from C1) | 0.99953 | 0.99970 | 0.99987 | 0.99970 | 0.99973 |
+| C3 (top 3, from C1) | 0.99953 | 0.99970 | 0.99987 | 0.99970 | 0.99967 |
+| C4 | 0.99998 | 0.99968 | 0.99989 | **0.99985** | 0.99969 |
+| C5 | 0.99948 | 0.99988 | 0.99967 | 0.99968 | 0.99970 |
+| A1-off | 0.99997 | 0.99998 | n/a | **0.99998** | 0.99982 |
+| A4-off | 0.99981 | 0.99974 | n/a | 0.99978 | 0.99950 |
+
+- **All 13 runs are valid and above the median. None medalled.** Every medal needs a perfect AUC of 1.0, and no node in any run reached it. The closest was A1-off seed 1 (0.99998).
+- **C1's pick was already the best node on test** in all three seeds, so C2 and C3 equal C1 (to five decimals; on seed 0 one node is better by less than 0.000005).
+- **Doubling the budget moved the means by at most 0.0003** (A4-off). C1 alone still ranges over 0.0003 across seeds. The largest gap between conditions, C4 against C5 (0.00017), is smaller than that.
+- Bootstrap intervals are in [`cactus-4h/outcomes/summary.md`](cactus-4h/outcomes/summary.md).
+
+## Per run
+
+| Run | Nodes | Working | Cost | Pick | Validation | Probe | **Test** | Pick's rank on test | Validation − test |
+|---|---|---|---|---|---|---|---|---|---|
+| C1 seed 0 | 40 | 36 | $0.074 | n35 | 0.99967 | 0.99942 | 0.99953 | 2nd of 36 | +0.00014 |
+| C1 seed 1 | 56 | 51 | $0.172 | n37 | 0.99988 | 0.99986 | 0.99970 | 1st of 51 | +0.00018 |
+| C1 seed 2 | 43 | 40 | $0.073 | n18 | 0.99991 | 0.99989 | 0.99987 | 1st of 40 | +0.00004 |
+| C4 seed 0 | 47 | 43 | $0.081 | n42 | 0.99995 | 0.99999 | 0.99998 | 1st of 43 | −0.00003 |
+| C4 seed 1 | 57 | 56 | $0.118 | n33 | 0.99961 | 0.99891 | 0.99968 | 1st of 56 | −0.00007 |
+| C4 seed 2 | 125 | 110 | $0.240 | n68 | 0.99986 | 0.99985 | 0.99989 | 2nd of 110 | −0.00003 |
+| C5 seed 0 | 65 | 61 | $0.188 | n57 | 0.99981 | 0.99963 | 0.99948 | 14th of 61 | +0.00033 |
+| C5 seed 1 | 81 | 77 | $0.145 | n15 | 0.99982 | 0.99985 | 0.99988 | 1st of 77 | −0.00006 |
+| C5 seed 2 | 98 | 93 | $0.171 | n38 | 0.99966 | 0.99949 | 0.99967 | 2nd of 93 | −0.00001 |
+| A1-off seed 0 | 31 | 27 | $0.063 | n6 | 0.99996 | 0.99995 | 0.99997 | 1st of 27 | −0.00001 |
+| A1-off seed 1 | 27 | 22 | $0.042 | n22 | 0.99997 | 0.99998 | 0.99998 | 1st of 22 | −0.00001 |
+| A4-off seed 0 | 80 | 75 | $0.140 | n48 | 0.99990 | 0.99984 | 0.99981 | 1st of 75 | +0.00009 |
+| A4-off seed 1 | 50 | 48 | $0.127 | n43 | 0.99984 | 0.99995 | 0.99974 | 3rd of 48 | +0.00010 |
+
+"Rank on test" counts the run's scored nodes. "Validation − test" is positive when validation was optimistic.
+
+## A1-off: no leak
+
+At 4 hours A1-off has the best mean (0.99998), so it was checked for the leak that spooky's A1-off showed. There is none:
+
+- **The picks' validation matches test:** −0.00001 on both seeds, against +0.00004 to +0.00018 for C1.
+- **Over all working nodes,** A1-off's mean validation − test gap is +0.00022 (seed 0) and +0.00061 (seed 1), against +0.00017 to +0.00048 for C1. The largest single gaps (+0.004) are on early, weak nodes, the same size as C1's (+0.002 to +0.005).
+- **A1-off has no leakage screen to fire,** since the screen is part of A1 (`controller.py` runs it only when the evaluation agent is on), so the evidence is the gaps above, not the screen. A1-off's runs were also short: 31 and 27 nodes, the fewest in the grid. Its high score comes from early CNNs (n6 and n22) that landed at 0.99997 and 0.99998, not from fitting to its own validation split.
+
+## Interventions
+
+| Runs | Fired | Effect on the submission |
+|---|---|---|
+| C4, seeds 0 to 2 (live) | never | none |
+| C5, seeds 0 to 2 (live) | never | none |
+| C4 rule replayed on all 13 runs | never | none |
+| C5 rule replayed on all 13 runs | 4 findings, in C1 seeds 0 and 1 and A1-off seeds 0 and 1 | none |
+
+- **Neither C4 nor C5 fired in a live run;** no run wrote a `queue.jsonl`, as at 2 hours. C4 and C5's runs are again C1's agent on other random paths, so C4's higher mean is not an effect of its monitor.
+- **Replayed** with `scripts/replay_policy.py`, C4's divergence rule fires nowhere. Validation and probe never moved apart by enough.
+- **C5's finding rule, replayed,** deletes one finding in each of four runs that are not C5. Each finding cites a single node that crashed: n8 (A1-off seed 0), n23 (A1-off seed 1 and C1 seed 0) and n4 (C1 seed 1). The replay re-issues the same deletion at every later checkpoint (17, 3, 16 and 30 lines in [`cactus-4h/replay/c5_finding_correction_interventions.csv`](cactus-4h/replay/c5_finding_correction_interventions.csv)) because it doesn't remove findings from the saved tree. No pick changes.
+
+## The leakage check fired at 4 hours
+
+A1's leakage screen (on in every condition except A1-off) never stopped a script at 2 hours. At 4 hours it stopped **4 nodes**, each for `R3_val_in_training`, meaning the script evaluated a model on validation rows it had been fitted on:
+
+| Run | Node | What it did |
+|---|---|---|
+| C1 seed 0 | n23 | a stacking `meta_lr` evaluated on the rows it was fitted on |
+| C5 seed 2 | n53 | `hgb_val` and `mlp_val` meta-models, the same pattern |
+| A4-off seed 0 | n66, n68 | the same, twice in one branch |
+
+All four were late attempts to stack models on top of a CNN that was already near 1.0. The longer budget gives the agent time to try stacking, and stacking is where it fits on its own validation rows. The check marked them buggy, and none became a pick.
+
+## Main findings
+
+1. **4 hours doesn't change cactus.** Every condition's mean moved by at most 0.0003, and the run-to-run spread is as large as the gaps between conditions. Cactus stays the control task.
+2. **The picks are almost always the best node.** In 10 of 13 runs the pick is first or second on test, and the oracle (C2) gains nothing over C1. The one clear miss is C5 seed 0 (14th of 61, 0.00027 below its best).
+3. **A1-off doesn't leak, even with twice the time and no leakage screen.** Its picks' validation and test agree to 0.00001.
+4. **No monitor had anything to do.** C4 and C5 never fired live, and their rules replayed find nothing that would change a pick.
+5. **Longer runs reach stacking, and stacking trips the leakage check.** The check caught all four cases before they could affect a pick.
+
+## Limitations
+
+- **A ceiling task.** With every model near 0.9999 and medals only at 1.0, cactus can't separate conditions by score.
+- **Few seeds:** three per main condition and two per ablation.
+- **One machine, CPU only,** and one run at a time over five days. The battery failure means C5 seed 1's first try was lost; its rerun started from scratch.
+- **C2 and C3 come from C1's tree only,** as in the 2 hour report.
+
+## Files
+
+- **`cactus-4h/outcomes/`:** `scripts/outcomes.py` over the 13 runs (`summary.md`, CSVs).
+- **`cactus-4h/replay/`:** the C4 (`divergence_prune`) and C5 (`finding_correction`) rules replayed over every run.
+- **`cactus-4h/grades/`:** each run's MLE-bench `grade.json`.

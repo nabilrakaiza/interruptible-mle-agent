@@ -1,0 +1,2 @@
+run,nodes,interventions,first_at_node,nodes_pruned,c1_pick,c1_test,policy_pick,policy_test,higher_is_better
+C6_random-acts-of-pizza_seed100,126,1,n30,108,n101,0.6671091140093443,n12,0.6794732847047171,True
