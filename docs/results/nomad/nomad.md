@@ -1,5 +1,7 @@
 # Nomad: results of the half plan
 
+> **Full plan (12 Nov 2026):** Sahi's 21 four-hour runs (C1, C4, C5 seeds 0 to 4; A1-off, A4-off seeds 0 to 2, seeds 0 to 2 extended from the runs below) are in [`full-4h/`](full-4h/README.md). 17 of 21 made a valid submission, all medalled; the 4 without a submission (C5 seeds 3 and 4, A1-off and A4-off seed 2) produced no working node, with Docker/WSL2 timeouts as the likely cause. This page covers the half plan.
+
 Sahi's 13 runs on `nomad2018-predict-transparent-conductors`: seeds 0, 1 and 2 of C1, C4 and C5, and seeds 0 and 1 of A1-off and A4-off. Sahi's own results package, with the grades, interventions and analysis CSVs, is in [`nomad/`](README.md). This page summarises it in the format of [`../spooky/spooky.md`](../spooky/spooky.md) and [`../cactus/cactus.md`](../cactus/cactus.md). Every number here comes from that package.
 
 Nomad predicts two properties of candidate transparent conductors (formation energy and bandgap) from tabular crystal data. The metric is the mean root mean squared log error (RMSLE) over the two, so **lower is better**. MLE-bench thresholds: median 0.0699, bronze 0.0658, silver 0.0623, gold 0.0559.

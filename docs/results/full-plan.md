@@ -11,12 +11,13 @@ Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1
 | **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run (teammates) |
 | leaf | image + tabular | 21 at 4 h (13 resumed from 2 h) | Medhini's machine | 1 session |
 | cactus | image | 13 (half plan) | Dziand's Mac | 1 session |
-| nomad | tabular | 13 (half plan) | Sahi's machine | 1 session |
+| nomad | tabular | 21 at 4 h (13 resumed from 2 h); 17 valid | Sahi's machine (Docker) | 1 session |
 
 The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
 - **spooky:** [`spooky/spooky.md`](spooky/spooky.md), with the full plan in [`spooky/sessions/night8.md`](spooky/sessions/night8.md) and the C6 session in [`spooky/c6.md`](spooky/c6.md);
 - **insults:** [`insults/sessions/seed0.md`](insults/sessions/seed0.md) to [`insults/sessions/round5.md`](insults/sessions/round5.md), with the full plan in `insults/sessions/round5.md` and the C6 session in [`insults/c6.md`](insults/c6.md);
 - **pizza:** [`pizza/sessions/seed0.md`](pizza/sessions/seed0.md) to [`pizza/sessions/round5.md`](pizza/sessions/round5.md), with the full plan in `pizza/sessions/round5.md`;
+- **nomad** (merged from `result-nomad`): Sahi's full-plan package in [`nomad/full-4h/`](nomad/full-4h/README.md), 21 runs at 4 hours, 17 with a valid submission;
 - **leaf** (merged from `result-leaf`): Medhini's full-plan package in [`leaf/full-4h/`](leaf/full-4h/findings.md), all 21 runs at 4 hours; the earlier 8-run four-hour set is in [`leaf/4h/`](leaf/4h/findings.md).
 
 The rest of this page covers the three complete tasks.
