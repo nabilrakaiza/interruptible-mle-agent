@@ -1,0 +1,13 @@
+{
+  "task": "nomad2018-predict-transparent-conductors",
+  "condition": "C5",
+  "seed": 3,
+  "final_node": null,
+  "final_selection": "best_val",
+  "submitted": false,
+  "valid_submission": false,
+  "above_median": false,
+  "any_medal": false,
+  "submissions": [],
+  "graded_at": "2026-11-12T00:09:53.590978+00:00"
+}

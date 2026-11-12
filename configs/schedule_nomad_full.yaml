@@ -1,0 +1,15 @@
+﻿defaults:
+  budget_hours: 4
+  sandbox: docker
+  evaluator: a1
+  runs_root: runs/grid
+
+tasks:
+  - nomad2018-predict-transparent-conductors
+
+blocks:
+  - {config: c1_autonomous.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: c4_divergence_prune.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: c5_finding_correction.yaml, seeds: [0, 1, 2, 3, 4]}
+  - {config: ablation_a1_off.yaml, seeds: [0, 1, 2]}
+  - {config: ablation_a4_off.yaml, seeds: [0, 1, 2]}
