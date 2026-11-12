@@ -8,9 +8,9 @@ Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1
 |---|---|---|---|---|
 | **spooky** | text | **21 of 21** at 4 h | Nabil's Mac (Docker) | 1 session (2 h) |
 | **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | 1 session (2 h) |
-| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run (teammates) |
+| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | a 4 h run with Claude as the monitor ([`pizza/c6-4h.md`](pizza/c6-4h.md)) |
 | leaf | image + tabular | 21 at 4 h (13 resumed from 2 h) | Medhini's machine | 1 session |
-| cactus | image | 13 (half plan) | Dziand's Mac | 1 session (2 h), plus a 4 h run with Claude as the monitor ([`cactus/c6-4h.md`](cactus/c6-4h.md)) |
+| cactus | image | 13 (half plan) at 2 h and again at 4 h ([`cactus/4h.md`](cactus/4h.md)) | Dziand's Mac | 1 session (2 h), plus a 4 h run with Claude as the monitor ([`cactus/c6-4h.md`](cactus/c6-4h.md)) |
 | nomad | tabular | 21 at 4 h (13 resumed from 2 h); 17 valid | Sahi's machine (Docker) | 1 session |
 
 The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
@@ -105,7 +105,7 @@ The 9 best spooky runs all submitted naive Bayes combined with a linear model, a
 
 - **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky/c6.md`](spooky/c6.md)).
 - **Insults:** one 2-hour session (seed 100, 8 Nov, on the Mac in Docker), test 0.9087 (gold), within C1's range at the 2-hour mark (0.901 to 0.909, mean 0.9055). 8 interventions; the participant could choose which node the agent worked on but not what it changed ([`insults/c6.md`](insults/c6.md)).
-- **Pizza:** to be run by teammates.
+- **Pizza:** no session with a person. A 4-hour run (seed 100, 12 Nov, Dziand's Mac in Docker) used Claude as the monitor: 79 prunes, mostly of children below their parent on validation, which on pizza's 576 validation rows is noise. Test 0.6671, below every C1 run; the best nodes on test were among those pruned ([`pizza/c6-4h.md`](pizza/c6-4h.md)).
 
 ## Limitations
 

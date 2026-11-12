@@ -1,0 +1,2 @@
+run,step,after_node,action,target,params,note,nodes_removed
+C6_random-acts-of-pizza_seed100,34,n30,prune,n13,"{'anchor': 'n12', 'node': 'n30', 'steps': 2, 'val_gain': 0.01019, 'probe_loss': 0.0267, 'consistent_share': 0.962}","since n12, validation +1.0% but probe -2.7% over 2 nodes, ending at n30",18
