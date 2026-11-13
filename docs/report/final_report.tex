@@ -800,13 +800,14 @@ A4-off & 96.0\% & 1.7\% & 1.4\% & 0.7\% & 1 & 0 \\
 Spooky  & person, 2 h & 9 prune, 2 redirect, correct & 0.368 (0.295--0.390) & none \\
 Insults & person, 2 h & 4 prune, 2 redirect, inject, override & 0.9087 (0.901--0.909) & +0.001 \\
 Nomad   & person, 2 h & 1 prune & 0.0614 (0.0599--0.0653) & none \\
-Cactus  & person + LLM, 2 h & 8 prune & 0.99953 (0.99917--0.99994) & none \\
+Cactus  & person, 2 h & 8 prune & 0.99953 (0.99917--0.99994) & none \\
 Leaf    & person, 2 h & none & 0.0261 (0.0128--0.0601) & -- \\
 \bottomrule
 \end{tabular}
 \caption{Live human sessions (C6), one seed each, 2 hours. C1's range is over its seeds,
-read from checkpoints at 2 hours where the grid ran 4. ``Person + LLM'': the participant
-chose among prunes an LLM assistant suggested. Effect is on the final pick.}
+read from checkpoints at 2 hours where the grid ran 4. In every session an LLM assistant
+explained the dashboard and node scripts on request; on cactus it also suggested prunes,
+and the participant chose which to make. Effect is on the final pick.}
 \label{tab:c6}
 \end{table}
 
