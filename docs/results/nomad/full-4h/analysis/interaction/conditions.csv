@@ -1,0 +1,6 @@
+condition,runs,queued_per_run,applied_per_run,dropped_per_run,first_applied_at,human_minutes_per_run,lost_wall_clock_s
+A1-off,3,0.0,0.0,0.0,,0.0,0.0
+A4-off,3,0.0,0.0,0.0,,0.0,0.0
+C1,5,0.0,0.0,0.0,,0.0,0.0
+C4,5,0.4,0.4,0.0,0.275,0.0,0.0
+C5,5,0.4,0.4,0.0,0.197,0.0,0.0

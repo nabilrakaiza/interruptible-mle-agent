@@ -1,0 +1,38 @@
+{
+  "task": "random-acts-of-pizza",
+  "condition": "A4-off",
+  "seed": 1,
+  "final_node": "n79",
+  "final_selection": "best_val",
+  "submitted": true,
+  "score": 0.70781,
+  "valid_submission": true,
+  "above_median": true,
+  "any_medal": true,
+  "gold_medal": false,
+  "silver_medal": false,
+  "bronze_medal": true,
+  "median_threshold": 0.5995950000000001,
+  "bronze_threshold": 0.6921,
+  "silver_threshold": 0.76482,
+  "gold_threshold": 0.97908,
+  "is_lower_better": false,
+  "submissions": [
+    {
+      "file": "submission.csv",
+      "score": 0.70781,
+      "valid_submission": true,
+      "above_median": true,
+      "any_medal": true,
+      "gold_medal": false,
+      "silver_medal": false,
+      "bronze_medal": true,
+      "median_threshold": 0.5995950000000001,
+      "bronze_threshold": 0.6921,
+      "silver_threshold": 0.76482,
+      "gold_threshold": 0.97908,
+      "is_lower_better": false
+    }
+  ],
+  "graded_at": "2026-11-02T12:00:01.608756+00:00"
+}

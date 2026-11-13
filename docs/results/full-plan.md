@@ -1,21 +1,24 @@
 # Findings of the full plan
 
-Status on 5 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1, C4 and C5 seeds 0 to 4, and A1-off and A4-off seeds 0 to 2. The half plan's findings are in [`findings.md`](findings.md).
+Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1, C4 and C5 seeds 0 to 4, and A1-off and A4-off seeds 0 to 2. The half plan's findings are in [`findings.md`](findings.md).
+
+**Full analysis of spooky, insults and pizza (Nabil):** [Full-plan results](https://claude.ai/artifact/1AHcCcSLLuLfqSGPkTFe5W#aee780ae-bfc4), with a cross-task summary, a tab per task (every run, charts, final models and a report draft), the reliability checks, tree shape and further analyses. A snapshot of it, with the charts, tables and scripts, is in [`analysis/`](analysis/README.md).
 
 | Task | Modality | Grid runs | Where they ran | C6 |
 |---|---|---|---|---|
 | **spooky** | text | **21 of 21** at 4 h | Nabil's Mac (Docker) | 1 session (2 h) |
-| **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run |
-| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | to run |
-| leaf | image + tabular | 21, but only 8 at 4 h | Medhini's machine | 1 session |
-| cactus | image | 13 (half plan) | Dziand's Mac | 1 session |
-| nomad | tabular | 13 (half plan) | Sahi's machine | 1 session |
+| **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | 1 session (2 h) |
+| **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | a 4 h run with Claude as the monitor ([`pizza/c6-4h.md`](pizza/c6-4h.md)) |
+| leaf | image + tabular | 21 at 4 h (13 resumed from 2 h) | Medhini's Windows x64 laptop (Intel Core i5-1230U), Docker Desktop | 1 session |
+| cactus | image | 13 (half plan) at 2 h and again at 4 h ([`cactus/4h.md`](cactus/4h.md)) | Dziand's MacBook Pro (M2), Docker | 1 session (2 h), plus a 4 h run with Claude as the monitor ([`cactus/c6-4h.md`](cactus/c6-4h.md)) |
+| nomad | tabular | 21 at 4 h (13 resumed from 2 h); 17 valid | Sahi's Windows ARM laptop (Snapdragon X), Docker on WSL2 | 1 session |
 
-The run-by-run write-ups live on each task's result branch:
-- **spooky** (`result-spooky`): `docs/results/spooky.md`, with the full plan in `spooky-night8.md`;
-- **insults** (`result-insults`): `docs/results/insults-seed0.md` to `insults-round5.md`, with the full plan in `insults-round5.md`;
-- **pizza** (`result-pizza`): `docs/results/pizza-seed0.md` to `pizza-round5.md`, with the full plan in `pizza-round5.md`;
-- **leaf** (`result-leaf`): `docs/results/leaf-medhini/4h/findings.md` for the 8 four-hour runs. The half plan's 13 runs are still at 2 hours, so leaf's 21 runs aren't one comparable set yet.
+The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
+- **spooky:** [`spooky/spooky.md`](spooky/spooky.md), with the full plan in [`spooky/sessions/night8.md`](spooky/sessions/night8.md) and the C6 session in [`spooky/c6.md`](spooky/c6.md);
+- **insults:** [`insults/sessions/seed0.md`](insults/sessions/seed0.md) to [`insults/sessions/round5.md`](insults/sessions/round5.md), with the full plan in `insults/sessions/round5.md` and the C6 session in [`insults/c6.md`](insults/c6.md);
+- **pizza:** [`pizza/sessions/seed0.md`](pizza/sessions/seed0.md) to [`pizza/sessions/round5.md`](pizza/sessions/round5.md), with the full plan in `pizza/sessions/round5.md`;
+- **nomad** (merged from `result-nomad`): Sahi's full-plan package in [`nomad/full-4h/`](nomad/full-4h/README.md), 21 runs at 4 hours, 17 with a valid submission;
+- **leaf** (merged from `result-leaf`): Medhini's full-plan package in [`leaf/full-4h/`](leaf/full-4h/findings.md), all 21 runs at 4 hours; the earlier 8-run four-hour set is in [`leaf/4h/`](leaf/4h/findings.md).
 
 The rest of this page covers the three complete tasks.
 
@@ -91,7 +94,7 @@ Pizza's C1 (4 bronzes in 5, against 5 in 16 for the other conditions together) i
 
 ### 5. On spooky, the model family matters more than the condition
 
-The 9 best spooky runs all submitted naive Bayes combined with a linear model, and the three weakest runs with A1 didn't use that combination. The half plan's stricter rule ("every run below 0.34 combined them", [`spooky-drops.md`](spooky-drops.md)) doesn't hold at 4 hours: 4 of the 14 runs under 0.34 didn't. Which family the agent lands on early still separates spooky's runs more than any condition does.
+The 9 best spooky runs all submitted naive Bayes combined with a linear model, and the three weakest runs with A1 didn't use that combination. The half plan's stricter rule ("every run below 0.34 combined them", [`spooky/drops.md`](spooky/drops.md)) doesn't hold at 4 hours: 4 of the 14 runs under 0.34 didn't. Which family the agent lands on early still separates spooky's runs more than any condition does.
 
 ### 6. Speed and cut-off calls changed between seeds
 
@@ -100,8 +103,9 @@ The 9 best spooky runs all submitted naive Bayes combined with a linear model, a
 
 ## C6 sessions
 
-- **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky-c6.md`](spooky-c6.md)).
-- **Insults and pizza:** not yet run. They are planned on the Mac with the dashboard, 2 hours each like every other C6 session, and will be compared with their C1 runs at the 2-hour mark. Their grid ran on Kaggle, so the write-up will note the platform difference.
+- **Spooky:** one 2-hour session (seed 100), test 0.368. Compared with C1 at the 2-hour mark of its five runs (0.295 to 0.390, mean 0.344, read from their checkpoints), it's within C1's range. Of its 12 interventions, 8 of the 9 prunes followed a budget cue the C4 rule doesn't have ([`spooky/c6.md`](spooky/c6.md)).
+- **Insults:** one 2-hour session (seed 100, 8 Nov, on the Mac in Docker), test 0.9087 (gold), within C1's range at the 2-hour mark (0.901 to 0.909, mean 0.9055). 8 interventions; the participant could choose which node the agent worked on but not what it changed ([`insults/c6.md`](insults/c6.md)).
+- **Pizza:** no session with a person. A 4-hour run (seed 100, 12 Nov, Dziand's Mac in Docker) used Claude as the monitor: 79 prunes, mostly of children below their parent on validation, which on pizza's 576 validation rows is noise. Test 0.6671, below every C1 run; the best nodes on test were among those pruned ([`pizza/c6-4h.md`](pizza/c6-4h.md)).
 
 ## Limitations
 

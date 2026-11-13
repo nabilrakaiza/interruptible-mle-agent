@@ -1,0 +1,13 @@
+run,task,seed,condition,score,valid_submission,above_median,any_medal
+A1-off_leaf-classification_seed2,leaf-classification,2,A1-off,0.69775,True,False,False
+A4-off_leaf-classification_seed2,leaf-classification,2,A4-off,0.36429,True,False,False
+C1_leaf-classification_seed3,leaf-classification,3,C1,0.34888,True,False,False
+C1_leaf-classification_seed3,leaf-classification,3,C2 (post hoc),0.0,True,True,True
+C1_leaf-classification_seed3,leaf-classification,3,"C3 (post hoc, k=3)",0.0,True,True,True
+C1_leaf-classification_seed4,leaf-classification,4,C1,0.03714,True,True,False
+C1_leaf-classification_seed4,leaf-classification,4,C2 (post hoc),0.00466,True,True,True
+C1_leaf-classification_seed4,leaf-classification,4,"C3 (post hoc, k=3)",0.03622,True,True,False
+C4_leaf-classification_seed3,leaf-classification,3,C4,0.07856,True,True,False
+C4_leaf-classification_seed4,leaf-classification,4,C4,0.05514,True,True,False
+C5_leaf-classification_seed3,leaf-classification,3,C5,0.07051,True,True,False
+C5_leaf-classification_seed4,leaf-classification,4,C5,0.02816,True,True,False

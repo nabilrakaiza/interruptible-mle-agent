@@ -1,0 +1,14 @@
+run,nodes,interventions,first_at_node,nodes_pruned,c1_pick,c1_test,policy_pick,policy_test,higher_is_better
+A1-off_aerial-cactus-identification_seed0,31,17,n14,0,n6,0.9999682777657396,n6,0.9999682777657396,True
+A1-off_aerial-cactus-identification_seed1,27,3,n24,0,n22,0.9999785264875776,n22,0.9999785264875776,True
+A4-off_aerial-cactus-identification_seed0,80,0,,0,n48,0.9998057623194516,n48,0.9998057623194516,True
+A4-off_aerial-cactus-identification_seed1,50,0,,0,n43,0.9997408537478112,n43,0.9997408537478112,True
+C1_aerial-cactus-identification_seed0,40,16,n24,0,n35,0.9995319750360657,n35,0.9995319750360657,True
+C1_aerial-cactus-identification_seed1,56,30,n14,0,n37,0.9996998588604592,n37,0.9996998588604592,True
+C1_aerial-cactus-identification_seed2,43,0,,0,n18,0.9998696948223458,n18,0.9998696948223458,True
+C4_aerial-cactus-identification_seed0,47,0,,0,n42,0.9999770623844578,n42,0.9999770623844578,True
+C4_aerial-cactus-identification_seed1,57,0,,0,n33,0.9996793614167834,n33,0.9996793614167834,True
+C4_aerial-cactus-identification_seed2,125,0,,0,n68,0.9998911683347682,n68,0.9998911683347682,True
+C5_aerial-cactus-identification_seed0,65,0,,0,n57,0.9994753630487703,n57,0.9994753630487703,True
+C5_aerial-cactus-identification_seed1,81,0,,0,n15,0.9998760392691978,n15,0.9998760392691978,True
+C5_aerial-cactus-identification_seed2,98,0,,0,n38,0.9996656964543327,n38,0.9996656964543327,True
