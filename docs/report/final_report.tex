@@ -76,7 +76,7 @@ full agent with no monitor), two scripted policies that stand in for a monitorin
 and two ablations, and analysed the 63 runs on the three text tasks in depth. No
 condition beat C1 (Friedman $p = 0.55$ on the text tasks; no task separates them). With A1 in place, the drift the
 interventions target barely occurred; without it, validation was more optimistic on
-the text tasks and nomad, one spooky run leaked, and one leaf run probably did. The size of the held-out
+the text tasks and nomad, one spooky run and one leaf run leaked. The size of the held-out
 splits explains most of the differences between tasks. Five live human sessions changed no
 outcome for the better. A person helps most through task knowledge and a direct
 instruction channel, not by watching scores.
@@ -391,10 +391,11 @@ every node sits near AUC 0.9999 and a medal needs 1.0. A1-off did not leak there
 the longer runs reached stacking, where A1's screen stopped 4 scripts fitted on
 validation rows. Leaf is the one task where selection lost much:
 C1's mean log loss is 0.085 against 0.0075 for C2, with 178 validation rows for 99
-species. Leaf's A4-off run at 0.0 matches the gold threshold, which the original
-leaderboard reached. Its A1-off run at 15.66 submitted hard 0/1 probabilities that were
-wrong on 43 of 99 test leaves (the score matches exactly), and its pick never changed
-from 2 to 4 hours: the signature of a model scored on rows it was fitted on.
+species. Leaf's A4-off run at 0.0 matches the gold threshold. Its A1-off run
+at 15.66 leaked: the agent fitted a $99\times99$ calibration matrix on its own validation
+rows and scored it on them (validation loss 0, probe 19.44, test 15.66). A1's static
+screen misses this, as the fit is a \texttt{scipy} optimisation, not a \texttt{.fit}
+call, but with A1 on the frozen harness scores validation itself, so it could not win.
 
 \begin{table}[tb]
 \centering
@@ -510,8 +511,8 @@ submitted pick used the column. (7) Spooky seeds 0--2 were resumed from 2 to 4 h
 (8) No pretrained models: none of the 5,343 text-task scripts loaded pretrained weights
 or downloaded anything, so every model was trained from scratch on 2 CPUs, which explains
 much of the gap to published agents (Appendix C), whose budgets and hardware also differ. The system
-executes generated code, A1's static screen misses leaks it has no rule for and any
-leak in the data itself, and A4's unreliable findings can steer the search.
+executes generated code, A1's static screen misses leaks it has no rule for (as on
+leaf) and any leak in the data itself, and A4's unreliable findings can steer the search.
 
 % ====================
 % 7. Reproducibility and responsible practice
@@ -568,7 +569,6 @@ checking the data, and telling the agent what to change.
 % ====================
 \section*{Contribution Statement}
 
-\todo{shares to agree as a group; each member to check their row.}
 
 \begin{center}
 \small
@@ -585,21 +585,21 @@ Nabil Rakaiza Abror (A0305715J) & Proposed the project idea and research questio
   red team. Integrated all roles (sandbox limits, MLE-bench grading, grid launcher,
   cost and outcome reports, policy replay, merged dashboard, C6 protocol). Ran the
   spooky, insults and pizza full plans (63 runs) and the spooky and insults C6 sessions;
-  did the cross-task analysis and compiled all results. & \\
+  did the cross-task analysis and compiled all results. & 50 \\
 Dziand Dafi Ginandjar (A0354009J) & Built A1 (seeded splits, frozen harness, leakage
   screen, A1-off mode), A4 reflection with evidence-backed findings, and the C5
   finding-correction policy; wrote the leakage stress test, finding-accuracy check, and
   validation--test gap and probe-fidelity analyses. Ran cactus at 2 and 4 hours (26
   runs) and its C6 session, two runs with an LLM monitor (cactus, pizza), and fixed
-  pizza's CSV quoting. & \\
+  pizza's CSV quoting. & 20 \\
 Medhini Karthikeyan (A0351868N) & Built the Docker execution sandbox, LLM call
   logging and pilot-run infrastructure, and the ML Docker image. Ran leaf's half plan
   (13 runs) and full plan (21 runs at 4 hours), its C6 session, grading and write-ups.
-  & \\
+  & 15 \\
 Sahishnav Kritin Karamarathur Senthil Kumar (A0357345X) & Built the C4
   divergence-prune policy and the first version of the monitoring dashboard; fixed the
   coding agent's \texttt{OUTPUT\_DIR} filtering. Ran nomad's half plan (13 runs) and
-  full plan (21 runs at 4 hours), its C6 session, and the write-ups. & \\
+  full plan (21 runs at 4 hours), its C6 session, and the write-ups. & 15 \\
 \midrule
 \textbf{Total} & & \textbf{100} \\
 \bottomrule

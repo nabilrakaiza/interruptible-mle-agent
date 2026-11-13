@@ -66,3 +66,14 @@ Medhini ran one C6 session, seed 100, 2 hours. Notes and debrief are in [`leaf/c
 - **What happened in A1-off seed 1** (15.66). It's the worst run of the half plan by far.
 - **The machine and Docker setup.**
 - **Trajectories for the grid runs.** Only the C6 session has one.
+
+## A1-off seed 1: the 15.66 run was a leak
+
+Checked on 13 Nov 2026 from the run folder Medhini shared in PR #13 (`docs/results/leaf-leakage-review/`).
+
+- **The pick, n18, scored a validation log loss of exactly 0, a probe of 19.44 and a test of 15.66.** Its whole lineage (n9, n10, n14, n17, n18) has validation near 0 and probe between 12 and 19.
+- **How:** with A1 off, the agent writes its own 80/20 split and reports its own score. n18 picks a base model on the split, then fits a full 99 x 99 matrix-scaling calibration (about 10,000 parameters) with `scipy.optimize.minimize` on the validation rows' logits and labels, and scores the calibrated, hard one-hot (argmax) predictions on those same validation rows. With that many parameters on 178 rows, every validation row comes out right, so the reported loss is 0.
+- **On test,** the same calibration with one-hot outputs gets 43 of 99 leaves wrong, which gives exactly 15.65532. The probe, scored by the harness, showed it all along.
+- **A1's static screen would not have caught it:** run over n7 to n18, it reports every script clean, because the fit is a `scipy` optimisation, not a `.fit` call. With A1 on, though, the frozen harness scores validation from the script's predictions, so the self-reported 0 would never have been used and the node could not have been picked.
+- **The pick never changed from 2 to 4 hours,** since nothing can beat a validation loss of 0. The run's best node on test was n22 (validation 0.042, test 0.055).
+
