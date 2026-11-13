@@ -61,6 +61,7 @@ Generated 8 Nov 2026 from `runs/_analysis/full_plan/runs/` (links to the 63 run 
 ## 7. Interventions
 - Live C4 (15 runs): fired only on pizza (seeds 0 and 4, 3 prunes); the pick never changed.
 - Live C5 (15 runs): 13 corrections (spooky 2, pizza 11, insults 0); never changed the pick. On pizza seeds 2–4, all 5 deleted findings that made a claim were right according to test.
+- **Correction (13 Nov):** recounted from `replay/runs.csv`, the rule fires on 11 of the 48 non-C4 runs (pizza 8, spooky 3, insults 0): pick better on 3, unchanged within 0.0001 on 3, worse on 5. The original line follows.
 - C4 rule replayed on the 48 non-C4 runs (`replay/`): fires on 10 (pizza 7, spooky 3, insults 0); pick better on 3 (spooky A1-off seed 1 +0.093, the leak; pizza A4-off s0 +0.006; pizza C5 s1 +0.003), unchanged on 2, worse on 5 (up to −0.024).
 
 ## 8. Other checks (see memory / `runs/_analysis/insults_complex/`, `runs/_analysis/mlebench_compare/`)

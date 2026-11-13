@@ -117,9 +117,9 @@ The full plan (21 four-hour runs) ran on five tasks and the 13-run half plan on 
 the three text tasks are analysed in depth and the others summarised. Insults and pizza
 ran on Kaggle CPUs, which have no Docker, so their scripts ran without a container. The
 A2-off ablation, optional in the proposal, was not run; as planned, we spent the compute
-on seeds instead. The scripted rules were tuned on pilot runs before the live
-sessions, so the sessions were compared against the rules rather than used to write
-them. There was no human session on pizza; two extra runs that used an LLM as the
+on seeds instead. C4's thresholds were set by replaying the rule over pilot runs and C5's
+were fixed in advance, so the live sessions were compared against the rules rather than
+used to write them. There was no human session on pizza; two extra runs that used an LLM as the
 monitor are outside the study and reported only in Appendix F.
 
 % ====================
@@ -148,7 +148,9 @@ over 118 controlled runs on six tasks plus five live human sessions; (3) \textbf
 evaluation from optimisation}, enforced by the environment, stress-tested and
 ablated; and (4) \textbf{a well-supported negative result} with an explanation
 (Section 6). We use MLE-bench's data preparation and graders, DeepSeek V4 Flash 0731
-through OpenRouter, Docker, Streamlit, and scikit-learn and PyTorch in the sandbox.
+\cite{deepseek} through OpenRouter \cite{openrouter}, Docker \cite{docker}, Streamlit
+\cite{streamlit}, and scikit-learn \cite{sklearn} and PyTorch \cite{pytorch} in the
+sandbox.
 
 % ====================
 % 3. Agent setup
@@ -680,6 +682,42 @@ E.~Wallace, K.~Xiao, R.~Leike, L.~Weng, J.~Heidecke, and A.~Beutel.
   Instructions.
 \newblock arXiv:2404.13208, 2024.
 
+\bibitem{deepseek}
+DeepSeek-AI.
+\newblock DeepSeek V4 Flash (\texttt{deepseek-v4-flash-0731}).
+\newblock Large language model, accessed through OpenRouter, 2026.
+
+\bibitem{openrouter}
+OpenRouter.
+\newblock Unified API for large language models.
+\newblock \url{https://openrouter.ai}, accessed November 2026.
+
+\bibitem{docker}
+D.~Merkel.
+\newblock Docker: Lightweight Linux Containers for Consistent Development and
+  Deployment.
+\newblock \emph{Linux Journal}, 2014(239), 2014.
+
+\bibitem{streamlit}
+Streamlit.
+\newblock An open-source Python framework for data apps.
+\newblock \url{https://streamlit.io}, accessed November 2026.
+
+\bibitem{sklearn}
+F.~Pedregosa et al.
+\newblock Scikit-learn: Machine Learning in Python.
+\newblock \emph{Journal of Machine Learning Research}, 12:2825--2830, 2011.
+
+\bibitem{pytorch}
+A.~Paszke et al.
+\newblock PyTorch: An Imperative Style, High-Performance Deep Learning Library.
+\newblock \emph{NeurIPS}, 2019.
+
+\bibitem{claude}
+Anthropic.
+\newblock Claude Opus 5.5.
+\newblock Large language model, 2026.
+
 \end{thebibliography}
 
 % ====================
@@ -782,8 +820,8 @@ submitted node (test 0.408), the diamond the best node on test.}
 
 \subsection*{F. Runs with an LLM monitor (outside the study)}
 
-Two extra 4-hour runs, both on one member's Mac in Docker, used Claude (Opus 5.5) as
-the monitor instead of a person: it read validation and probe scores, plans and scripts
+Two extra 4-hour runs, both on one member's Mac in Docker, used Claude (Opus 5.5)
+\cite{claude} as the monitor instead of a person: it read validation and probe scores, plans and scripts
 every 15 minutes and queued prunes through the same queue as the dashboard, following
 criteria taken from the human cactus session. These are not C6 sessions as the proposal
 defines them, and we do not use them in the main analysis.
