@@ -362,8 +362,8 @@ spooky, A4-off on insults, C1 on pizza), and one condition's own seeds vary more
 the gaps between conditions (spooky: 0.037 to 0.082 within a condition, at most 0.046
 between means). Friedman tests find no difference among C1, C4 and C5 ($\chi^2 = 1.2$,
 $p = 0.55$, 15 blocks) or among all five run conditions ($\chi^2 = 2.2$, $p = 0.69$,
-9 blocks). The strongest hint of a difference, pizza's C1 (4 bronze of 5 against 5 of
-16 for the rest), favours the condition without interventions.
+9 blocks). The strongest hint, pizza's C1 (4 bronze of 5 against 5 of 16), favours
+no intervention.
 
 \textbf{Selection costs little (C2, C3).} The pick is a median 0.000, 0.003 and 0.009
 below the run's best node on test; the top-3 hedge recovers at most 0.0005, and picking
@@ -394,8 +394,9 @@ C1's mean log loss is 0.085 against 0.0075 for C2, with 178 validation rows for 
 species. Leaf's A4-off run at 0.0 matches the gold threshold. Its A1-off run
 at 15.66 leaked: the agent fitted a $99\times99$ calibration matrix on its own validation
 rows and scored it on them (validation loss 0, probe 19.44, test 15.66). A1's static
-screen misses this, as the fit is a \texttt{scipy} optimisation, not a \texttt{.fit}
-call, but with A1 on the frozen harness scores validation itself, so it could not win.
+screen misses this (the fit is a \texttt{scipy} optimisation, not a \texttt{.fit} call),
+but with A1 on the frozen harness scores validation itself; replayed, the C4 rule prunes
+the leaking branch at n9 and recovers test 0.055.
 
 \begin{table}[tb]
 \centering
@@ -456,8 +457,7 @@ family a run lands on early separates runs more than any condition.
 \textbf{Failure modes.} Of 5,381 nodes, 93.6--97.3\% per condition ran; the rest are
 runtime errors (0.7--2.6\%), timeouts (1.3--1.7\%) and generation errors
 (${\leq}0.8\%$) (Appendix D). The larger failure is quiet: 63\% of working improve
-nodes did not beat their parent, 158 changed no prediction, and the agent sometimes
-repeats the same change on the same parent. Of 1,007 findings that claim an effect,
+nodes did not beat their parent and 158 changed no prediction. Of 1,007 findings that claim an effect,
 only 61\% are supported by the scores they cite (22--50\% hold on the probe), yet all
 are shown to the agent as true, which may be why A4-off does no worse.
 
