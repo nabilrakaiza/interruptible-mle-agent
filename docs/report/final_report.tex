@@ -77,7 +77,7 @@ and two ablations, and analysed the 63 runs on the three text tasks in depth. No
 condition beat C1 (Friedman $p = 0.55$ over task $\times$ seed blocks on the text tasks;
 no task separates them). With A1 in place, the drift the interventions target barely
 occurred; without it, validation was more optimistic on the text tasks and nomad, and 2
-of 17 runs leaked. The differences between tasks are consistent with the size of the
+of 17 runs leaked. The differences between tasks partly track the size of the
 held-out splits. Five live human sessions changed no outcome beyond noise; as a design
 implication, they suggest a person's input would matter most as task knowledge and a
 direct instruction channel rather than score-watching.
@@ -333,8 +333,8 @@ The agent overfits its own proxy metric & Pick's test minus validation with A1 (
   $-0.006$ / $-0.001$ / $-0.021$ & Only pizza \\
 The probe is a usable signal & Probe--test rank correlation 0.97 / 0.59 / 0.28
   (validation: 0.98 / 0.55 / 0.53) & Depends on task \\
-A human-style policy corrects drift & C4 within seed noise of C1 on every task; its
-  rule never changed a pick; C2 caps any selection gain at 0.0006 / 0.006 / 0.006 & No \\
+A human-style policy corrects drift & C4 within noise of C1; its rule changed no pick; C2
+  caps any selection gain at 0.0006 / 0.006 / 0.006 & No \\
 Judgement beats a blind hedge & C3 gains at most 0.0005; C4 is no better beyond
   noise & No \\
 Action and belief differ & C4 fired live on 2 of 15 runs; no C5 correction changed a
@@ -379,7 +379,7 @@ leaf; Section 6). A1-off changes more than the screen: the agent also writes its
 split and metric, so the ablation tests the whole separation. With A1 no text-task run
 leaked, and on all 18 spooky runs the pick's test stays within 0.015 of validation. A1's screen stopped 3
 real scripts that trained on validation rows, and in a stress test it flagged 4 of 4
-planted leaks, one per rule, and 0 of 4 clean controls.
+planted leaks and 0 of 4 clean controls.
 
 \textbf{The other three tasks} (Table~\ref{tab:tasks}; Appendices G--H) repeat the
 pattern: no condition separates. On nomad 4 runs produced no working node (likely
@@ -424,7 +424,7 @@ sizes for nomad and cactus are approximate (20\% and 10\% of the training rows).
 % ====================
 \section*{6. Analysis of Results, Failures, Limitations, Costs, and Risks}
 
-\textbf{The differences between tasks are consistent with the size of the held-out splits.} Spooky has
+\textbf{The differences between tasks partly track the size of the held-out splits.} Spooky has
 3,524 validation and 1,762 probe rows, insults 789 and 395, pizza 576 and 288. Where the
 splits are large, validation and probe rank nodes almost like test (spooky 0.97), the
 pick is the best node, and the rules have nothing to act on. Where they are small
@@ -436,16 +436,18 @@ quarter into the run and 0.021 at the end, since the more nodes compete on 576 r
 the more the winner's score is luck. On spooky the gap does not grow. The other tasks fit:
 leaf, with the smallest splits (178 and 89 rows), is where selection lost most; cactus,
 saturated near AUC 1.0, and nomad, a regression task whose continuous targets carry more
-information per row, gave the rules little to act on. Size is not the whole story: shrinking spooky's splits to pizza's size
-raises its median selection loss from 0.000 to 0.002 but leaves probe fidelity at
-0.93, far above pizza's 0.28. In our data, the drift we set out to catch appeared only
-where held-out data was small, which is also where the monitor's signal was too noisy.
+information per row, gave the rules little to act on. Size is not the whole story: shrinking spooky's splits to pizza's size (its 18 A1-on
+runs, 20 random subsamples each) raises its median selection loss from 0.000 to 0.002 but
+leaves probe fidelity at 0.93, far above pizza's 0.28, because spooky's nodes are far apart
+in score (their spread is 2.3 times one node's noise on 288 probe rows, against 0.5 on
+pizza), so their ranking survives a smaller split.
 
 
 \begin{figure}[tb]
 \centering
-\includegraphics[width=0.6\linewidth]{spooky/analysis/charts/trajectory_A1-off_seed1.png}
-\caption{Spooky A1-off seed 1 (log loss): validation (green) falls; probe (grey) and test (black) rise.}
+\includegraphics[width=0.68\linewidth,trim=0 0 0 34,clip]{spooky/analysis/charts/trajectory_A1-off_seed1.png}
+\caption{Spooky A1-off seed 1 (log loss): validation (green) falls while probe (grey) and test
+(black) rise. Star: submitted pick; diamond: best node on test.}
 \label{fig:leak}
 \end{figure}
 
@@ -473,8 +475,8 @@ are shown to the agent as true, which may be why A4-off does no worse.
 C4 rule exactly, but most prunes removed weak branches (far behind with little time
 left, broken, or the wrong model family), which the rule does not look at. Redirects and
 injects did not produce the intended change: a redirect chooses which node is worked on,
-not what changes, and an injected card was ignored for 20 nodes. On leaf the participant
-was unsure when to act and made no intervention. As a design implication rather than a finding, the sessions point to where a person
+not what changes, and an injected card was ignored for 20 nodes. The leaf participant, unsure
+when to act, made none. As a design implication rather than a finding, the sessions point to where a person
 could add value: task knowledge (spooky stalled without the naive Bayes recipe an expert
 would supply), data checks (pizza's \texttt{giver\_username\_if\_known} column leaks
 the label, invisible to A1) and a direct instruction channel.
@@ -482,11 +484,10 @@ the label, invisible to A1) and a direct instruction channel.
 \textbf{Costs.} About \$21 for the 63 text-task runs (\$0.29--0.36 per run), \$4.24
 for nomad's 21 and \$1.63 for cactus's 13; the policies added no measurable cost, and the
 five C6 sessions took 29 human actions over 10 person-hours (about \$0.12 of API calls
-each) for no gain beyond noise. Seed 0 ran slower, before we dropped a provider that cut
-off 9\% of its calls.
+per session) for no gain beyond noise.
 
 \textbf{Limitations and risks.} (1) Five seeds for C1, C4 and C5 and three for the
-ablations; \cite{aira} recommends ten, as rankings can flip at five. (2) 4 hours instead of 24; \cite{aira} reports
+ablations; \cite{aira} recommends ten, as rankings can flip at five. (2) 4 hours instead of 24 (spooky seeds 0--2 resumed from 2); \cite{aira} reports
 that agents diverge only after about 15 hours, and half of spooky's runs found their pick in
 the last 3\% of nodes. (3) One
 model, and the in-depth analysis covers only the text tasks; on nomad 4 runs failed on an
@@ -495,8 +496,7 @@ and C6 is five sessions by group members who knew the agent but were not experts
 the tasks, none on pizza: illustrative, not a user study; an expert might judge more
 reliably. (5) Insults and pizza ran without container isolation.
 (6) Pizza's data leaks the label (MLE-bench
-recommends dropping it); no pick used that column. (7) Spooky seeds 0--2 were resumed from 2 to 4 hours.
-(8) None of the 5,343 text-task scripts loaded pretrained weights or downloaded anything,
+recommends dropping it); no pick used that column. (7) None of the 5,343 text-task scripts loaded pretrained weights or downloaded anything,
 so every model was trained from scratch on 2 CPUs, a large part of the gap to published
 agents (Appendix C). The system
 executes generated code, A1's static screen misses leaks it has no rule for (as on
@@ -534,8 +534,8 @@ solutions are not public would avoid both.
 
 Over 118 controlled runs on six tasks, interventions modelled on a monitoring human did
 not improve an interruptible tree-search MLE agent: the validation--test drift they target
-barely occurred once evaluation was separated from optimisation, and where held-out data
-was small enough for drift to appear, the monitor's signal was too noisy to act on.
+barely occurred once evaluation was separated from optimisation, and where drift did
+appear (pizza), the monitor's signal was too noisy to act on.
 Without that separation, 2 of 17 runs leaked. As a design implication, a person may help
 most by supplying task knowledge, checking the data, and telling the agent what to change.
 
