@@ -10,8 +10,8 @@ Status on 9 Nov 2026. The full plan is 21 grid runs per task at 4 hours each: C1
 | **insults** | text | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | 1 session (2 h) |
 | **pizza** | text + tabular | **21 of 21** at 4 h | Kaggle CPU (subprocess sandbox) | a 4 h run with Claude as the monitor ([`pizza/c6-4h.md`](pizza/c6-4h.md)) |
 | leaf | image + tabular | 21 at 4 h (13 resumed from 2 h) | Medhini's machine | 1 session |
-| cactus | image | 13 (half plan) at 2 h and again at 4 h ([`cactus/4h.md`](cactus/4h.md)) | Dziand's Mac | 1 session (2 h), plus a 4 h run with Claude as the monitor ([`cactus/c6-4h.md`](cactus/c6-4h.md)) |
-| nomad | tabular | 21 at 4 h (13 resumed from 2 h); 17 valid | Sahi's machine (Docker) | 1 session |
+| cactus | image | 13 (half plan) at 2 h and again at 4 h ([`cactus/4h.md`](cactus/4h.md)) | Dziand's MacBook Pro (M2), Docker | 1 session (2 h), plus a 4 h run with Claude as the monitor ([`cactus/c6-4h.md`](cactus/c6-4h.md)) |
+| nomad | tabular | 21 at 4 h (13 resumed from 2 h); 17 valid | Sahi's Windows ARM laptop (Snapdragon X), Docker on WSL2 | 1 session |
 
 The run-by-run write-ups (merged here from `result-spooky`, `result-insults`, `result-pizza` and `result-leaf`):
 - **spooky:** [`spooky/spooky.md`](spooky/spooky.md), with the full plan in [`spooky/sessions/night8.md`](spooky/sessions/night8.md) and the C6 session in [`spooky/c6.md`](spooky/c6.md);

@@ -158,8 +158,9 @@ through OpenRouter, Docker, Streamlit, and scikit-learn and PyTorch in the sandb
 \textbf{Task and environment.} Given a competition description and data, the system
 writes \texttt{submission.csv}, graded by MLE-bench. Each run has 4 hours, 2 CPUs, a
 20-minute limit per script and a 200-node cap. Spooky ran in a Docker sandbox (4\,GB,
-no network) on a MacBook Pro M1, cactus, nomad and leaf in Docker on the other members' machines,
-insults and pizza on Kaggle CPUs in a subprocess sandbox. All LLM calls use DeepSeek V4 Flash 0731 (fp8) at temperature 0.7.
+no network) on a MacBook Pro (M1), cactus on one with an M2, nomad on a Snapdragon X
+Windows laptop (Docker on WSL2), leaf on a fourth machine, all CPU-only; insults and pizza
+on Kaggle CPUs in a subprocess sandbox. All LLM calls use DeepSeek V4 Flash 0731 (fp8) at temperature 0.7.
 
 \textbf{Sub-agents.}
 \textbf{A1 (evaluation)} runs once: it splits the labelled data into training,

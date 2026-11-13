@@ -9,7 +9,7 @@ Nomad predicts two properties of candidate transparent conductors (formation ene
 ## Setup
 
 - **The same as the other tasks:** DeepSeek V4 Flash 0731 through OpenRouter, Docker sandbox, a nominal 2 hours per run.
-- **The machine isn't recorded** in the package.
+- **Machine:** Sahi's Asus Zenbook A, a Windows ARM64 laptop with a Qualcomm Snapdragon X (X1-26-100, 8 cores) and an integrated Adreno X1-45 GPU (not used: the sandbox is CPU-only). Docker ran on WSL2.
 - **Probe split:** about 216 rows.
 
 ## Test scores
