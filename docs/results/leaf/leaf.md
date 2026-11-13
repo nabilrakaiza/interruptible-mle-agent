@@ -69,7 +69,7 @@ Medhini ran one C6 session, seed 100, 2 hours. Notes and debrief are in [`leaf/c
 
 ## A1-off seed 1: the 15.66 run was a leak
 
-Checked on 13 Nov 2026 from the run folder Medhini shared in PR #13 (`docs/results/leaf-leakage-review/`).
+Checked on 13 Nov 2026 from the run folder Medhini shared (PR #13, closed without merging: the folder was shared directly rather than kept in git).
 
 - **The pick, n18, scored a validation log loss of exactly 0, a probe of 19.44 and a test of 15.66.** Its whole lineage (n9, n10, n14, n17, n18) has validation near 0 and probe between 12 and 19.
 - **How:** with A1 off, the agent writes its own 80/20 split and reports its own score. n18 picks a base model on the split, then fits a full 99 x 99 matrix-scaling calibration (about 10,000 parameters) with `scipy.optimize.minimize` on the validation rows' logits and labels, and scores the calibrated, hard one-hot (argmax) predictions on those same validation rows. With that many parameters on 178 rows, every validation row comes out right, so the reported loss is 0.
