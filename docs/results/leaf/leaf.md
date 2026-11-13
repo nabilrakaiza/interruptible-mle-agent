@@ -9,7 +9,7 @@ Leaf classifies 99 tree species from leaf images and 192 precomputed shape, marg
 ## Setup
 
 - **The same as the other tasks:** DeepSeek V4 Flash 0731, A1, Docker, 2 hours per run.
-- **The machine isn't recorded** in the package.
+- **Machine:** Medhini's HP ENVY x360 13-bf0xxx, a Windows x64 laptop with a 12th Gen Intel Core i5-1230U (10 cores, 12 threads), with Docker Desktop.
 - **Splits:** the A1 harness for leaf holds out 178 validation rows, 89 probe rows and 99 test rows. That is one or two rows per species in each.
 
 ## Test scores
