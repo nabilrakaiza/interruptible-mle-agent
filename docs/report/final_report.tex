@@ -498,9 +498,9 @@ C6 session cost about \$0.12 plus 2 hours of a person. Seed 0 searched less than
 seeds, before we excluded a provider that cut off 9\% of its calls.
 
 \textbf{Limitations and risks.} (1) Five seeds for C1, C4 and C5 and three for the
-ablations; intervals overlap everywhere. (2) 4 hours instead of 24; \cite{aira} reports
-that agents diverge only after about 15 hours, and spooky was still improving (half its
-runs found their pick in the last 3\% of nodes). (3) One
+ablations; \cite{aira} recommends ten, as rankings can flip at five. (2) 4 hours instead of 24; \cite{aira} reports
+that agents diverge only after about 15 hours, and half of spooky's runs found their pick in
+the last 3\% of nodes. (3) One
 model, and the in-depth analysis covers only the text tasks; on nomad 4 runs failed on an
 unstable machine. (4) Scripted policies are reproducible but not behaviourally faithful,
 and C6 is five sessions by group members who knew the agent but were not experts in
